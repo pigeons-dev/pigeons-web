@@ -61,9 +61,11 @@ export function Footer() {
               <ul className="mt-4 flex flex-col gap-3">
                 {group.links.map((link) => {
                   const isExternal = link.href.startsWith("http");
+                  const isStatic = /\.\w+$/.test(link.href);
+                  const Tag = isExternal || isStatic ? "a" : Link;
                   return (
                     <li key={link.href}>
-                      <Link
+                      <Tag
                         href={link.href}
                         className="text-base text-ink-2 transition-colors hover:text-ink"
                         {...(isExternal
@@ -71,7 +73,7 @@ export function Footer() {
                           : {})}
                       >
                         {link.label}
-                      </Link>
+                      </Tag>
                     </li>
                   );
                 })}

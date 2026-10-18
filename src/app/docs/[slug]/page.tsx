@@ -67,17 +67,16 @@ const components: Components = {
   ),
   a: ({ href, children }) => {
     const isExternal = href?.startsWith("http");
-    return (
-      <Link
-        href={href ?? "#"}
-        className="text-accent-2 underline decoration-accent-2/30 underline-offset-2 transition-colors hover:text-accent"
-        {...(isExternal
-          ? { target: "_blank", rel: "noopener noreferrer" }
-          : {})}
-      >
-        {children}
-      </Link>
-    );
+    const isStatic = href ? /\.\w+$/.test(href) : false;
+    const props = {
+      href: href ?? "#",
+      className: "text-accent-2 underline decoration-accent-2/30 underline-offset-2 transition-colors hover:text-accent",
+      ...(isExternal ? { target: "_blank" as const, rel: "noopener noreferrer" } : {}),
+    };
+    if (isExternal || isStatic) {
+      return <a {...props}>{children}</a>;
+    }
+    return <Link {...props}>{children}</Link>;
   },
   ul: ({ children }) => (
     <ul className="mb-4 ml-6 list-disc space-y-2 text-base text-ink-2 leading-relaxed">{children}</ul>
