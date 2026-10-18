@@ -39,20 +39,20 @@ export function Sidebar() {
           </p>
           <ul className="flex flex-col gap-1.5">
             <li>
-              <Link
+              <a
                 href="/llms.txt"
                 className="text-xs text-ink-2 transition-colors hover:text-accent-2"
               >
                 llms.txt
-              </Link>
+              </a>
             </li>
             <li>
-              <Link
+              <a
                 href="/llms-full.txt"
                 className="text-xs text-ink-2 transition-colors hover:text-accent-2"
               >
                 llms-full.txt
-              </Link>
+              </a>
             </li>
           </ul>
         </div>
