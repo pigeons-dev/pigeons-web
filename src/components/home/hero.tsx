@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { PigeonField } from "./pigeon-field";
+import dynamic from "next/dynamic";
+
+const PigeonField = dynamic(() => import("./pigeon-field").then((m) => m.PigeonField), {
+  ssr: false,
+});
 
 const INSTALL_CMD = "docker run -d -p 3891:3891 ghcr.io/pigeons-dev/pigeons";
 

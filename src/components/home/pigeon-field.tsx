@@ -203,7 +203,10 @@ export function PigeonField() {
 
     const start = performance.now();
     let frame = 0;
+    let visible = true;
+
     const tick = (): void => {
+      if (!visible) { frame = requestAnimationFrame(tick); return; }
       trail.update();
       touchTexture.needsUpdate = true;
       material.uniforms.uTime.value = (performance.now() - start) / 1000;
@@ -212,8 +215,15 @@ export function PigeonField() {
     };
     frame = requestAnimationFrame(tick);
 
+    const visObserver = new IntersectionObserver(
+      ([entry]) => { visible = entry.isIntersecting; },
+      { threshold: 0 },
+    );
+    visObserver.observe(container);
+
     return () => {
       cancelAnimationFrame(frame);
+      visObserver.disconnect();
       observer.disconnect();
       window.removeEventListener("pointermove", onPointerMove);
       if (points) {
