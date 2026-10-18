@@ -1,0 +1,3864 @@
+# Pigeons - complete documentation
+
+> Open source email infrastructure for developers and AI agents.
+> https://pigeons.dev
+
+============================================================
+Quick Start (quick-start)
+============================================================
+
+---
+title: Quick Start
+description: Get from zero to sending email in under 2 minutes.
+---
+
+## Start the server
+
+```bash
+docker run -d \
+  -p 3891:3891 \
+  -e PIGEONS_AWS_ACCESS_KEY_ID=your-key \
+  -e PIGEONS_AWS_SECRET_ACCESS_KEY=your-secret \
+  -e PIGEONS_AWS_REGION=us-east-1 \
+  -e PIGEONS_FROM_EMAIL=noreply@yourdomain.com \
+  ghcr.io/pigeons-dev/pigeons
+```
+
+On first boot, Pigeons prints your API key to stdout. Grab it from the logs:
+
+```bash
+docker logs $(docker ps -q --filter ancestor=ghcr.io/pigeons-dev/pigeons) 2>&1 | grep "Your API key"
+```
+
+The key starts with `pgn_`. Save it somewhere safe - it won't be shown again.
+
+## Send your first email
+
+```bash
+curl -X POST http://localhost:3891/v1/emails \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: pgn_your_key_here" \
+  -d '{
+    "to": "recipient@example.com",
+    "subject": "Hello from Pigeons",
+    "html": "<h1>It works!</h1>"
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "msg_abc123...",
+  "status": "queued",
+  "from": "noreply@yourdomain.com",
+  "to": ["recipient@example.com"],
+  "subject": "Hello from Pigeons"
+}
+```
+
+## Install the SDK
+
+### TypeScript
+
+```bash
+npm install @pigeons/pigeons-ts
+```
+
+```typescript
+import { Pigeons } from '@pigeons/pigeons-ts'
+
+const pigeons = new Pigeons({
+  baseUrl: 'http://localhost:3891',
+  apiKey: 'pgn_your_key_here',
+})
+
+const email = await pigeons.emails.send({
+  to: 'recipient@example.com',
+  subject: 'Hello from Pigeons',
+  html: '<h1>It works!</h1>',
+})
+
+console.log(email.id) // msg_abc123...
+```
+
+### Python
+
+```bash
+pip install pigeons-py
+```
+
+```python
+from pigeons import Pigeons
+
+pigeons = Pigeons(
+    base_url="http://localhost:3891",
+    api_key="pgn_your_key_here",
+)
+
+email = pigeons.emails.send(
+    to="recipient@example.com",
+    subject="Hello from Pigeons",
+    html="<h1>It works!</h1>",
+)
+
+print(email.id)  # msg_abc123...
+```
+
+## What's next
+
+- [Self-Hosting](/docs/self-hosting) - production deployment with Docker, environment variables, and HTTPS
+- [Domains](/docs/domains) - add and verify a sending domain
+- [API Reference](/docs/api-reference) - full endpoint documentation
+- [TypeScript SDK](/docs/typescript-sdk) - complete SDK guide
+
+
+============================================================
+Self-Hosting (self-hosting)
+============================================================
+
+---
+title: Self-Hosting
+description: Deploy Pigeons with Docker, configure AWS SES, and harden for production.
+---
+
+## Docker
+
+```bash
+docker run -d \
+  --name pigeons \
+  -p 3891:3891 \
+  -v pigeons-data:/data \
+  -e PIGEONS_DATABASE_URL=file:/data/pigeons.db \
+  -e PIGEONS_AWS_ACCESS_KEY_ID=AKIA... \
+  -e PIGEONS_AWS_SECRET_ACCESS_KEY=... \
+  -e PIGEONS_AWS_REGION=us-east-1 \
+  -e PIGEONS_FROM_EMAIL=noreply@yourdomain.com \
+  -e PIGEONS_CONFIGURATION_SET=pigeons-tracking \
+  ghcr.io/pigeons-dev/pigeons
+```
+
+On first start, Pigeons runs migrations, creates a default API key, and prints it to stdout. The key starts with `pgn_` and won't be shown again.
+
+### Docker Compose
+
+```yaml
+services:
+  pigeons:
+    image: ghcr.io/pigeons-dev/pigeons
+    ports:
+      - "3891:3891"
+    volumes:
+      - pigeons-data:/data
+    environment:
+      PIGEONS_DATABASE_URL: file:/data/pigeons.db
+      PIGEONS_AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      PIGEONS_AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      PIGEONS_AWS_REGION: us-east-1
+      PIGEONS_FROM_EMAIL: noreply@yourdomain.com
+      PIGEONS_CONFIGURATION_SET: pigeons-tracking
+    restart: unless-stopped
+
+volumes:
+  pigeons-data:
+```
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `PIGEONS_PORT` | No | `3891` | HTTP server port |
+| `PIGEONS_DATABASE_URL` | No | in-memory | SQLite database URL. Use `file:/path/to/pigeons.db` for persistence |
+| `PIGEONS_AWS_ACCESS_KEY_ID` | Yes | | AWS access key for SES |
+| `PIGEONS_AWS_SECRET_ACCESS_KEY` | Yes | | AWS secret key for SES |
+| `PIGEONS_AWS_REGION` | Yes | | AWS region (e.g. `us-east-1`) |
+| `PIGEONS_FROM_EMAIL` | Yes | | Default sender email address |
+| `PIGEONS_API_KEY` | No | auto-generated | Pre-set API key instead of auto-generating |
+| `PIGEONS_WEBHOOK_SECRET` | No | | Default webhook signing secret |
+| `PIGEONS_CONFIGURATION_SET` | No | | SES configuration set name for event tracking |
+| `PIGEONS_WORKER_POLL_INTERVAL` | No | `1000` | Job queue poll interval in milliseconds |
+| `PIGEONS_INBOUND_S3_BUCKET` | No | | S3 bucket for inbound email storage |
+| `PIGEONS_INBOUND_S3_KEY_PREFIX` | No | | S3 key prefix for inbound emails (e.g. `inbound/`) |
+| `PIGEONS_OPEN_TRACKING` | No | `false` | Enable open tracking globally |
+| `PIGEONS_BASE_URL` | No | | Public base URL of this server (required for open tracking) |
+
+## AWS SES Setup
+
+Pigeons requires AWS SES for sending (and optionally receiving) email. You need:
+
+1. An AWS account with SES access
+2. IAM credentials with `ses:SendEmail`, `ses:SendRawEmail` permissions
+3. A verified domain in SES
+4. A configuration set for delivery event tracking
+
+### Automated setup
+
+The CLI wizard provisions all AWS resources in one command:
+
+```bash
+npx @pigeons/cli setup aws
+```
+
+It creates the SES domain identity, configuration set, SNS topics, S3 bucket (for inbound), and receipt rules. At the end it prints the DNS records to add and the environment variables to set.
+
+Options:
+
+```bash
+npx @pigeons/cli setup aws \
+  --region us-east-1 \
+  --domain yourdomain.com \
+  --access-key-id AKIA... \
+  --secret-access-key ... \
+  --skip-inbound  # skip inbound email setup
+```
+
+### Manual setup
+
+If you prefer manual setup:
+
+1. **Create SES domain identity** - verify your domain in the SES console
+2. **Add DNS records** - DKIM CNAMEs, SPF TXT, DMARC TXT (see [Domains](/docs/domains))
+3. **Create configuration set** - named `pigeons-tracking` (or any name, set via `PIGEONS_CONFIGURATION_SET`)
+4. **Create SNS topic** for delivery events - subscribe it to `POST https://your-server/v1/internal/ses/events`
+5. **Add SNS event destination** to the configuration set, matching events: `SEND`, `DELIVERY`, `BOUNCE`, `COMPLAINT`
+6. **(Inbound only)** Create S3 bucket, SNS topic, and SES receipt rule (see [Inboxes](/docs/inboxes))
+
+### SES Sandbox
+
+New SES accounts start in sandbox mode. In sandbox:
+
+- You can only send to verified email addresses
+- You can send to SES simulator addresses: `success@simulator.amazonses.com`, `bounce@simulator.amazonses.com`, `complaint@simulator.amazonses.com`
+
+Request production access through the AWS console when you're ready to send to any address.
+
+## Production Checklist
+
+### HTTPS
+
+Pigeons itself serves HTTP. Put it behind a reverse proxy (nginx, Caddy, Traefik) for TLS:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name pigeons.yourdomain.com;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:3891;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Set `PIGEONS_BASE_URL=https://pigeons.yourdomain.com` so open tracking pixels and links resolve correctly.
+
+### Persistent storage
+
+Always mount a volume for the database. Without it, data is lost when the container restarts:
+
+```bash
+-v pigeons-data:/data
+-e PIGEONS_DATABASE_URL=file:/data/pigeons.db
+```
+
+### Monitoring
+
+- `GET /health` returns `{ "status": "ok", "version": "0.1.0" }` - use this for health checks
+- Watch Docker logs for job queue errors and delivery failures
+- Set up a webhook for `email.bounced` and `email.complained` events to monitor deliverability
+
+### SNS subscription
+
+After starting the server, subscribe your SNS topics to the Pigeons endpoints:
+
+```bash
+# Delivery events (bounces, complaints, deliveries)
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:123456789:pigeons-events-yourdomain \
+  --protocol https \
+  --endpoint https://pigeons.yourdomain.com/v1/internal/ses/events
+
+# Inbound email notifications
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:123456789:pigeons-inbound-yourdomain \
+  --protocol https \
+  --endpoint https://pigeons.yourdomain.com/v1/internal/ses/inbound
+```
+
+SNS will send a confirmation request to these endpoints. Pigeons handles confirmation automatically.
+
+
+============================================================
+API Reference (api-reference)
+============================================================
+
+---
+title: API Reference
+description: Complete REST API documentation for every Pigeons endpoint.
+---
+
+## Overview
+
+Base path: `/v1`
+
+All authenticated endpoints require the `x-api-key` header. API keys start with `pgn_`.
+
+```bash
+curl http://localhost:3891/v1/emails \
+  -H "x-api-key: pgn_your_key_here"
+```
+
+### Pagination
+
+List endpoints use cursor-based pagination:
+
+```json
+{
+  "data": [...],
+  "has_more": true,
+  "next_cursor": "2024-01-15T10:30:00.000Z"
+}
+```
+
+Pass `?cursor=<next_cursor>&limit=25` to get the next page. Maximum limit is 100, default is 25.
+
+### Idempotency
+
+Mutating endpoints accept an `Idempotency-Key` header. If the same key is sent again within 24 hours, the original response is returned without re-executing the request.
+
+```bash
+curl -X POST http://localhost:3891/v1/emails \
+  -H "x-api-key: pgn_..." \
+  -H "Idempotency-Key: my-unique-key-123" \
+  -H "Content-Type: application/json" \
+  -d '{"to": "user@example.com", "subject": "Hello", "text": "Hi"}'
+```
+
+### Error format
+
+All errors return a consistent JSON shape:
+
+```json
+{
+  "error": {
+    "type": "validation_error",
+    "message": "Subject is required",
+    "code": "validation_error"
+  }
+}
+```
+
+| Status | Type | Meaning |
+|---|---|---|
+| 400 | `validation_error` | Invalid request body or parameters |
+| 401 | `authentication_error` | Missing or invalid API key |
+| 404 | `not_found` | Resource does not exist |
+| 409 | `conflict` | Resource already exists (e.g. duplicate email) |
+| 429 | `rate_limit_error` | Too many requests |
+| 500 | `internal_error` | Unexpected server error |
+
+---
+
+## Emails
+
+### Send an email
+
+```
+POST /v1/emails
+```
+
+Send directly with HTML/text, or render a template by slug or ID.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `to` | `string \| string[]` | Yes | Recipient address(es) |
+| `from` | `string` | No | Sender address (defaults to `PIGEONS_FROM_EMAIL`) |
+| `subject` | `string` | Conditional | Required unless using a template |
+| `html` | `string` | Conditional | HTML body (required if no `text` or `templateId`) |
+| `text` | `string` | Conditional | Plain text body |
+| `templateId` | `string` | No | Template ID (`tpl_...`) or slug |
+| `data` | `object` | No | Template variables |
+| `cc` | `string[]` | No | CC recipients |
+| `bcc` | `string[]` | No | BCC recipients |
+| `tags` | `string[]` | No | Tags for filtering |
+| `headers` | `object` | No | Custom email headers |
+| `scheduledAt` | `string` | No | ISO 8601 timestamp for scheduled send |
+| `trackOpens` | `boolean` | No | Override global open tracking for this email |
+
+**Response (201):**
+
+```json
+{
+  "id": "msg_abc123...",
+  "status": "queued",
+  "from": "noreply@yourdomain.com",
+  "to": ["recipient@example.com"],
+  "subject": "Hello"
+}
+```
+
+### Get an email
+
+```
+GET /v1/emails/:id
+```
+
+Returns the full email object including delivery status, open tracking data, and timestamps.
+
+**Response (200):**
+
+```json
+{
+  "id": "msg_abc123...",
+  "from": "noreply@yourdomain.com",
+  "to": ["recipient@example.com"],
+  "subject": "Hello",
+  "html": "<h1>Hello</h1>",
+  "status": "delivered",
+  "sesMessageId": "...",
+  "trackOpens": false,
+  "openCount": 0,
+  "firstOpenedAt": null,
+  "lastOpenedAt": null,
+  "tags": null,
+  "scheduledAt": null,
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-15T10:30:05.000Z"
+}
+```
+
+### List emails
+
+```
+GET /v1/emails
+```
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `limit` | `number` | Max results (default 25, max 100) |
+| `cursor` | `string` | Pagination cursor |
+| `status` | `string` | Filter by status: `queued`, `sending`, `sent`, `delivered`, `bounced`, `complained`, `failed` |
+
+### Cancel a queued email
+
+```
+POST /v1/emails/:id/cancel
+```
+
+Only emails with status `queued` can be cancelled. Sets status to `failed`.
+
+### Batch send
+
+```
+POST /v1/emails/batch
+```
+
+Send up to 100 emails in a single request. Request body is an array of send email objects.
+
+**Response (201):** Array of email objects, one per item.
+
+---
+
+## Domains
+
+### Add a domain
+
+```
+POST /v1/domains
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `domain` | `string` | Yes | Domain name (e.g. `example.com`) |
+| `capabilities` | `object` | No | `{ sending: true, receiving: false }` |
+
+**Response (201):** Domain object with DKIM tokens and required DNS records.
+
+### List domains
+
+```
+GET /v1/domains
+```
+
+**Response (200):**
+
+```json
+{
+  "data": [
+    {
+      "id": "dom_abc123...",
+      "domain": "example.com",
+      "verificationStatus": "verified",
+      "dkimTokens": ["token1", "token2", "token3"],
+      "spfVerified": true,
+      "dmarcVerified": true,
+      "region": "us-east-1",
+      "capabilities": { "sending": true, "receiving": false },
+      "records": [...]
+    }
+  ]
+}
+```
+
+### Get domain
+
+```
+GET /v1/domains/:id
+```
+
+### Verify a domain
+
+```
+GET /v1/domains/:id/verify
+```
+
+Re-checks DNS records and updates verification status.
+
+### Get domain stats
+
+```
+GET /v1/domains/:id/stats
+```
+
+Returns delivery statistics and warmup guidance for the domain.
+
+### Delete a domain
+
+```
+DELETE /v1/domains/:id
+```
+
+---
+
+## Contacts
+
+### Create a contact
+
+```
+POST /v1/contacts
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `email` | `string` | Yes | Email address (must be unique) |
+| `firstName` | `string` | No | First name |
+| `lastName` | `string` | No | Last name |
+| `tags` | `string[]` | No | Tags for segmentation |
+| `properties` | `object` | No | Custom key-value data |
+
+**Response (201):** Full contact object.
+
+### Get a contact
+
+```
+GET /v1/contacts/:idOrEmail
+```
+
+Accepts either a contact ID (`ctc_...`) or email address.
+
+### List contacts
+
+```
+GET /v1/contacts
+```
+
+**Query parameters:**
+
+| Param | Type | Description |
+|---|---|---|
+| `limit` | `number` | Max results (default 25, max 100) |
+| `cursor` | `string` | Pagination cursor |
+| `tag` | `string` | Filter by tag |
+
+### Update a contact
+
+```
+PATCH /v1/contacts/:idOrEmail
+```
+
+**Request body:**
+
+| Field | Type | Description |
+|---|---|---|
+| `firstName` | `string` | First name |
+| `lastName` | `string` | Last name |
+| `tags` | `string[]` | Replace tags |
+| `properties` | `object` | Replace custom properties |
+
+### Delete a contact
+
+```
+DELETE /v1/contacts/:idOrEmail
+```
+
+### Batch create contacts
+
+```
+POST /v1/contacts/batch
+```
+
+Create up to 1000 contacts. Existing emails are silently skipped.
+
+**Request body:** Array of contact creation objects.
+
+**Response (201):**
+
+```json
+{
+  "created": 8,
+  "skipped": 2,
+  "contacts": [{ "id": "ctc_...", "email": "..." }, ...]
+}
+```
+
+### Unsubscribe a contact
+
+```
+POST /v1/contacts/:idOrEmail/unsubscribe
+```
+
+Global unsubscribe, or pass `{ "topicId": "top_..." }` for per-topic unsubscribe.
+
+### Resubscribe a contact
+
+```
+POST /v1/contacts/:idOrEmail/resubscribe
+```
+
+Same body format as unsubscribe.
+
+---
+
+## Templates
+
+### Create a template
+
+```
+POST /v1/templates
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `slug` | `string` | Yes | URL-safe identifier (lowercase alphanumeric with hyphens) |
+| `name` | `string` | Yes | Display name |
+| `subject` | `string` | Yes | Subject line (supports `{{variables}}`) |
+| `body` | `string` | Yes | HTML body (supports `{{variables}}`) |
+| `sampleData` | `object` | No | Sample data for previews |
+
+### Get a template
+
+```
+GET /v1/templates/:idOrSlug
+```
+
+Accepts template ID (`tpl_...`) or slug.
+
+### List templates
+
+```
+GET /v1/templates
+```
+
+### Update a template
+
+```
+PATCH /v1/templates/:idOrSlug
+```
+
+Updating `body` or `subject` increments the template version.
+
+### Delete a template
+
+```
+DELETE /v1/templates/:idOrSlug
+```
+
+### Preview a template
+
+```
+POST /v1/templates/:idOrSlug/preview
+```
+
+**Request body:**
+
+```json
+{ "data": { "name": "Alice", "company": "Acme" } }
+```
+
+**Response (200):**
+
+```json
+{
+  "subject": "Welcome, Alice!",
+  "html": "<h1>Welcome to Acme</h1>...",
+  "text": "Welcome to Acme..."
+}
+```
+
+---
+
+## Campaigns
+
+### Create a campaign
+
+```
+POST /v1/campaigns
+```
+
+Creates a campaign in `draft` status.
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Campaign name |
+| `subject` | `string` | No | Email subject (or use template) |
+| `topicId` | `string` | No | Subscription topic ID for unsubscribe filtering |
+| `templateId` | `string` | No | Template ID or slug |
+| `templateData` | `object` | No | Template variables |
+| `fromName` | `string` | No | Sender display name |
+| `fromEmail` | `string` | No | Sender email address |
+| `audienceFilter` | `object` | No | Filter to select recipients (see [Audience Filters](#audience-filters)) |
+| `scheduledAt` | `string` | No | ISO 8601 timestamp for scheduled send |
+
+### List campaigns
+
+```
+GET /v1/campaigns
+```
+
+**Query parameters:** `limit`, `cursor`, `status` (`draft`, `scheduled`, `sending`, `paused`, `sent`, `cancelled`).
+
+### Get a campaign
+
+```
+GET /v1/campaigns/:id
+```
+
+Returns the campaign with its `stats` object:
+
+```json
+{
+  "stats": {
+    "total": 500,
+    "sent": 450,
+    "delivered": 440,
+    "opened": 120,
+    "bounced": 5,
+    "complained": 1,
+    "failed": 4
+  }
+}
+```
+
+### Update a campaign
+
+```
+PATCH /v1/campaigns/:id
+```
+
+Only `draft` campaigns can be updated.
+
+### Send a campaign
+
+```
+POST /v1/campaigns/:id/send
+```
+
+Transitions from `draft` or `scheduled` to `sending`. Filters contacts by audience filter, excluding unsubscribed, bounced, and complained contacts.
+
+Optional body: `{ "scheduledAt": "2024-06-01T09:00:00Z" }` to schedule instead of sending immediately.
+
+### Pause a campaign
+
+```
+POST /v1/campaigns/:id/pause
+```
+
+Only `sending` campaigns can be paused.
+
+### Resume a campaign
+
+```
+POST /v1/campaigns/:id/resume
+```
+
+Only `paused` campaigns can be resumed.
+
+### Cancel a campaign
+
+```
+POST /v1/campaigns/:id/cancel
+```
+
+Only `sending` or `scheduled` campaigns can be cancelled.
+
+### Audience Filters
+
+The `audienceFilter` object supports:
+
+```json
+{
+  "tags": {
+    "contains": "newsletter",
+    "containsAny": ["vip", "early-adopter"],
+    "containsAll": ["active", "verified"]
+  },
+  "properties": {
+    "plan": "pro",
+    "region": "us"
+  }
+}
+```
+
+---
+
+## Sequences
+
+### Create a sequence
+
+```
+POST /v1/sequences
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Sequence name |
+| `trigger` | `object` | No | `{ event: "contact.created", filter: {...} }` |
+| `steps` | `array` | No | Array of step objects |
+
+**Step types:**
+
+- `email` - send an email using `templateId` and optional `subject`, `templateData`, `topicId`
+- `delay` - wait for a duration (e.g. `"1d"`, `"12h"`, `"30m"`) via `delayDuration`
+- `condition` - evaluate a condition before continuing
+
+### List sequences
+
+```
+GET /v1/sequences
+```
+
+**Query parameters:** `limit`, `cursor`, `status` (`draft`, `active`, `paused`, `archived`).
+
+### Get a sequence
+
+```
+GET /v1/sequences/:id
+```
+
+Returns the sequence with all steps and stats.
+
+### Update a sequence
+
+```
+PATCH /v1/sequences/:id
+```
+
+Active sequences must be paused before updating. Steps are replaced wholesale when provided.
+
+### Activate a sequence
+
+```
+POST /v1/sequences/:id/activate
+```
+
+Sequence must have at least one step.
+
+### Pause a sequence
+
+```
+POST /v1/sequences/:id/pause
+```
+
+### Enroll a contact
+
+```
+POST /v1/sequences/:id/enroll
+```
+
+**Request body:**
+
+```json
+{ "contactId": "ctc_abc123..." }
+```
+
+Sequence must be `active`. Returns the enrollment object.
+
+### List enrollments
+
+```
+GET /v1/sequences/:id/enrollments
+```
+
+**Query parameters:** `limit`, `cursor`, `status` (`active`, `completed`, `exited`, `failed`).
+
+---
+
+## Inboxes
+
+### Create an inbox
+
+```
+POST /v1/inboxes
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Inbox name |
+| `emailAddress` | `string` | Yes | Email address for this inbox |
+| `description` | `string` | No | Description |
+| `webhookUrl` | `string` | No | URL to receive inbound message webhooks |
+| `metadata` | `object` | No | Arbitrary metadata |
+| `labels` | `string[]` | No | Labels for categorization |
+
+### List inboxes
+
+```
+GET /v1/inboxes
+```
+
+**Query parameters:** `limit`, `cursor`, `status` (`active`, `paused`, `archived`), `label`.
+
+### Get an inbox
+
+```
+GET /v1/inboxes/:id
+```
+
+### Update an inbox
+
+```
+PATCH /v1/inboxes/:id
+```
+
+### Delete an inbox
+
+```
+DELETE /v1/inboxes/:id
+```
+
+### Pause an inbox
+
+```
+POST /v1/inboxes/:id/pause
+```
+
+### Resume an inbox
+
+```
+POST /v1/inboxes/:id/resume
+```
+
+### Set catch-all
+
+```
+POST /v1/inboxes/:id/catch-all
+```
+
+Designates this inbox as the catch-all for unmatched inbound emails. Only one inbox can be catch-all at a time.
+
+### List messages
+
+```
+GET /v1/inboxes/:id/messages
+```
+
+**Query parameters:** `limit`, `cursor`, `direction` (`inbound`, `outbound`), `thread_id`, `label`.
+
+### Get a message
+
+```
+GET /v1/inboxes/:id/messages/:messageId
+```
+
+### Send a message
+
+```
+POST /v1/inboxes/:id/messages
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `to` | `string \| string[]` | Yes | Recipient address(es) |
+| `cc` | `string[]` | No | CC recipients |
+| `subject` | `string` | No | Subject line |
+| `html` | `string` | Conditional | HTML body |
+| `text` | `string` | Conditional | Plain text body |
+| `inReplyTo` | `string` | No | Message ID to reply to (maintains threading) |
+| `labels` | `string[]` | No | Labels |
+
+### List threads
+
+```
+GET /v1/inboxes/:id/threads
+```
+
+**Query parameters:** `limit`, `cursor`, `status` (`open`, `closed`, `snoozed`).
+
+### Get a thread
+
+```
+GET /v1/inboxes/:id/threads/:threadId
+```
+
+### Update a thread
+
+```
+PATCH /v1/inboxes/:id/threads/:threadId
+```
+
+**Request body:**
+
+| Field | Type | Description |
+|---|---|---|
+| `status` | `string` | `open`, `closed`, or `snoozed` |
+| `metadata` | `object` | Arbitrary metadata |
+
+---
+
+## Webhooks
+
+### Create a webhook
+
+```
+POST /v1/webhooks
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `url` | `string` | Yes | Endpoint URL |
+| `events` | `string[]` | Yes | Event types to subscribe to |
+| `secret` | `string` | No | Signing secret (min 16 chars). Auto-generated if omitted |
+
+The response includes the `secret` field. It is not returned on subsequent GET requests.
+
+### List webhooks
+
+```
+GET /v1/webhooks
+```
+
+### Get a webhook
+
+```
+GET /v1/webhooks/:id
+```
+
+### Update a webhook
+
+```
+PATCH /v1/webhooks/:id
+```
+
+**Request body:**
+
+| Field | Type | Description |
+|---|---|---|
+| `url` | `string` | New endpoint URL |
+| `events` | `string[]` | New event list |
+| `status` | `string` | `active` or `disabled` |
+
+### Delete a webhook
+
+```
+DELETE /v1/webhooks/:id
+```
+
+---
+
+## API Keys
+
+### Create an API key
+
+```
+POST /v1/api-keys
+```
+
+**Request body:**
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | `string` | Yes | Key name for identification |
+| `scopes` | `string[]` | No | Restrict to specific scopes (omit for full access) |
+| `expiresAt` | `string` | No | ISO 8601 expiration timestamp |
+
+Available scopes: `emails`, `domains`, `api_keys`, `templates`, `contacts`, `inboxes`, `webhooks`, `campaigns`, `sequences`, `topics`, `stats`, or `*` for all.
+
+**Response (201):** Includes the full API key in the `key` field. This is the only time the key is returned.
+
+### List API keys
+
+```
+GET /v1/api-keys
+```
+
+Returns all keys with `prefix` (first characters) but not the full key.
+
+### Delete an API key
+
+```
+DELETE /v1/api-keys/:id
+```
+
+---
+
+## Unauthenticated Endpoints
+
+These endpoints sit outside auth middleware:
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/health` | Health check - returns `{ "status": "ok" }` |
+| `POST` | `/v1/internal/ses/events` | SES delivery/bounce/complaint events via SNS |
+| `POST` | `/v1/internal/ses/inbound` | SES inbound email notifications via SNS |
+| `GET` | `/v1/t/:emailId` | Open tracking pixel (1x1 transparent GIF) |
+
+
+============================================================
+TypeScript SDK (typescript-sdk)
+============================================================
+
+---
+title: TypeScript SDK
+description: Send emails, manage contacts, and build automations with the TypeScript SDK.
+---
+
+## Install
+
+```bash
+npm install @pigeons/pigeons-ts
+```
+
+## Initialize
+
+```typescript
+import { Pigeons } from '@pigeons/pigeons-ts'
+
+const pigeons = new Pigeons({
+  baseUrl: 'https://pigeons.yourdomain.com',
+  apiKey: 'pgn_your_key_here',
+})
+```
+
+Both options can be set via environment variables instead:
+
+| Option | Env var | Description |
+|---|---|---|
+| `baseUrl` | `PIGEONS_URL` | Pigeons server URL (no default) |
+| `apiKey` | `PIGEONS_API_KEY` | API key starting with `pgn_` |
+
+Constructor values take precedence over environment variables.
+
+---
+
+## Emails
+
+### Send an email
+
+```typescript
+const email = await pigeons.emails.send({
+  to: 'alice@example.com',
+  subject: 'Welcome!',
+  html: '<h1>Welcome aboard</h1>',
+})
+
+console.log(email.id)     // msg_abc123...
+console.log(email.status) // "queued"
+```
+
+### Send with a template
+
+```typescript
+const email = await pigeons.emails.send({
+  to: 'alice@example.com',
+  templateId: 'welcome-email', // slug or tpl_ ID
+  data: { name: 'Alice', company: 'Acme' },
+})
+```
+
+### Multiple recipients
+
+```typescript
+const email = await pigeons.emails.send({
+  to: ['alice@example.com', 'bob@example.com'],
+  cc: ['manager@example.com'],
+  subject: 'Team Update',
+  html: '<p>Here is your update.</p>',
+})
+```
+
+### Schedule an email
+
+```typescript
+const email = await pigeons.emails.send({
+  to: 'alice@example.com',
+  subject: 'Reminder',
+  text: 'Your trial expires tomorrow.',
+  scheduledAt: '2024-06-01T09:00:00Z',
+})
+```
+
+### Get email status
+
+```typescript
+const email = await pigeons.emails.get('msg_abc123...')
+console.log(email.status) // "delivered"
+```
+
+### List emails
+
+```typescript
+const page = await pigeons.emails.list({ limit: 10, status: 'delivered' })
+
+for (const email of page.data) {
+  console.log(email.id, email.subject, email.status)
+}
+
+if (page.has_more) {
+  const next = await pigeons.emails.list({ cursor: page.next_cursor! })
+}
+```
+
+### Cancel a queued email
+
+```typescript
+const cancelled = await pigeons.emails.cancel('msg_abc123...')
+```
+
+### Batch send
+
+```typescript
+const results = await pigeons.emails.batch([
+  { to: 'alice@example.com', subject: 'Hi Alice', text: 'Hello!' },
+  { to: 'bob@example.com', subject: 'Hi Bob', text: 'Hello!' },
+])
+```
+
+### Idempotent sends
+
+```typescript
+const email = await pigeons.emails.send(
+  { to: 'alice@example.com', subject: 'Order #123', html: '...' },
+  { idempotencyKey: 'order-123-confirmation' },
+)
+```
+
+---
+
+## Contacts
+
+### Create a contact
+
+```typescript
+const contact = await pigeons.contacts.create({
+  email: 'alice@example.com',
+  firstName: 'Alice',
+  lastName: 'Smith',
+  tags: ['newsletter', 'beta'],
+  properties: { plan: 'pro', signupSource: 'website' },
+})
+```
+
+### Get a contact
+
+```typescript
+// By ID
+const contact = await pigeons.contacts.get('ctc_abc123...')
+
+// By email
+const contact = await pigeons.contacts.get('alice@example.com')
+```
+
+### Update a contact
+
+```typescript
+const updated = await pigeons.contacts.update('ctc_abc123...', {
+  tags: ['newsletter', 'beta', 'vip'],
+  properties: { plan: 'enterprise' },
+})
+```
+
+### List contacts
+
+```typescript
+const page = await pigeons.contacts.list({ tag: 'newsletter', limit: 50 })
+```
+
+### Delete a contact
+
+```typescript
+await pigeons.contacts.delete('ctc_abc123...')
+```
+
+### Batch create
+
+```typescript
+const result = await pigeons.contacts.batchCreate([
+  { email: 'alice@example.com', firstName: 'Alice', tags: ['import'] },
+  { email: 'bob@example.com', firstName: 'Bob', tags: ['import'] },
+])
+console.log(result.created) // 2
+console.log(result.skipped) // 0
+```
+
+### Unsubscribe / Resubscribe
+
+```typescript
+// Global unsubscribe
+await pigeons.contacts.unsubscribe('ctc_abc123...')
+
+// Per-topic unsubscribe
+await pigeons.contacts.unsubscribe('ctc_abc123...', { topicId: 'top_xyz...' })
+
+// Resubscribe
+await pigeons.contacts.resubscribe('ctc_abc123...')
+```
+
+---
+
+## Templates
+
+### Create a template
+
+```typescript
+const template = await pigeons.templates.create({
+  slug: 'welcome-email',
+  name: 'Welcome Email',
+  subject: 'Welcome, {{name}}!',
+  body: '<h1>Welcome to {{company}}</h1><p>Hi {{name}},</p>',
+  sampleData: { name: 'Alice', company: 'Acme' },
+})
+```
+
+### Get / Update / Delete
+
+```typescript
+const tpl = await pigeons.templates.get('welcome-email') // by slug or ID
+const updated = await pigeons.templates.update('welcome-email', { subject: 'New subject' })
+await pigeons.templates.delete('welcome-email')
+```
+
+### Preview a template
+
+```typescript
+const preview = await pigeons.templates.preview('welcome-email', {
+  name: 'Alice',
+  company: 'Acme',
+})
+console.log(preview.subject) // "Welcome, Alice!"
+console.log(preview.html)    // rendered HTML
+```
+
+---
+
+## Campaigns
+
+### Create and send a campaign
+
+```typescript
+const campaign = await pigeons.campaigns.create({
+  name: 'Product Launch',
+  templateId: 'product-launch',
+  templateData: { launchDate: '2024-06-01' },
+  audienceFilter: { tags: { contains: 'newsletter' } },
+})
+
+// Send immediately
+await pigeons.campaigns.send(campaign.id)
+
+// Or schedule
+await pigeons.campaigns.send(campaign.id, {
+  scheduledAt: '2024-06-01T09:00:00Z',
+})
+```
+
+### Campaign lifecycle
+
+```typescript
+await pigeons.campaigns.pause(campaign.id)
+await pigeons.campaigns.resume(campaign.id)
+await pigeons.campaigns.cancel(campaign.id)
+```
+
+### Monitor stats
+
+```typescript
+const campaign = await pigeons.campaigns.get('cmp_abc123...')
+console.log(campaign.stats)
+// { total: 500, sent: 450, delivered: 440, opened: 120, bounced: 5, complained: 1, failed: 4 }
+```
+
+---
+
+## Sequences
+
+### Create a sequence
+
+```typescript
+const sequence = await pigeons.sequences.create({
+  name: 'Onboarding',
+  steps: [
+    { type: 'email', templateId: 'welcome-email', subject: 'Welcome!' },
+    { type: 'delay', delayDuration: '1d' },
+    { type: 'email', templateId: 'getting-started', subject: 'Getting Started' },
+    { type: 'delay', delayDuration: '3d' },
+    { type: 'email', templateId: 'tips', subject: 'Pro Tips' },
+  ],
+})
+```
+
+### Activate and enroll
+
+```typescript
+await pigeons.sequences.activate(sequence.id)
+
+const enrollment = await pigeons.sequences.enroll(sequence.id, 'ctc_abc123...')
+console.log(enrollment.status) // "active"
+```
+
+### Monitor enrollments
+
+```typescript
+const page = await pigeons.sequences.enrollments(sequence.id, { status: 'active' })
+```
+
+---
+
+## Inboxes
+
+### Create an inbox
+
+```typescript
+const inbox = await pigeons.inboxes.create({
+  name: 'Support',
+  emailAddress: 'support@yourdomain.com',
+  webhookUrl: 'https://your-app.com/webhooks/email',
+})
+```
+
+### Inbox operations
+
+```typescript
+await pigeons.inboxes.pause(inbox.id)
+await pigeons.inboxes.resume(inbox.id)
+await pigeons.inboxes.setCatchAll(inbox.id)
+await pigeons.inboxes.delete(inbox.id)
+```
+
+### Read messages
+
+```typescript
+const messages = await pigeons.inboxes.messages.list(inbox.id, {
+  direction: 'inbound',
+  limit: 10,
+})
+
+const message = await pigeons.inboxes.messages.get(inbox.id, 'imsg_abc123...')
+```
+
+### Send from an inbox
+
+```typescript
+const sent = await pigeons.inboxes.messages.create(inbox.id, {
+  to: 'customer@example.com',
+  subject: 'Re: Your ticket',
+  html: '<p>Thanks for reaching out.</p>',
+  inReplyTo: 'imsg_previous...', // maintains thread
+})
+```
+
+### Threads
+
+```typescript
+const threads = await pigeons.inboxes.threads.list(inbox.id, { status: 'open' })
+
+const thread = await pigeons.inboxes.threads.get(inbox.id, 'thr_abc123...')
+
+await pigeons.inboxes.threads.update(inbox.id, 'thr_abc123...', {
+  status: 'closed',
+})
+```
+
+---
+
+## Webhooks
+
+```typescript
+const webhook = await pigeons.webhooks.create({
+  url: 'https://your-app.com/webhooks/pigeons',
+  events: ['email.delivered', 'email.bounced', 'inbox.message.received'],
+})
+
+// The secret is only returned on creation
+console.log(webhook.secret) // "whsec_..."
+```
+
+---
+
+## Domains
+
+```typescript
+const domain = await pigeons.domains.add({ domain: 'example.com' })
+console.log(domain.records) // DNS records to add
+
+// Re-check verification
+const verified = await pigeons.domains.verify(domain.id)
+console.log(verified.verificationStatus) // "verified"
+```
+
+---
+
+## Error Handling
+
+All errors extend `PigeonsError`:
+
+```typescript
+import { PigeonsError, NotFoundError, AuthError, RateLimitError } from '@pigeons/pigeons-ts'
+
+try {
+  await pigeons.emails.get('msg_nonexistent')
+} catch (err) {
+  if (err instanceof NotFoundError) {
+    console.log(err.message)    // "Email 'msg_nonexistent' not found"
+    console.log(err.statusCode) // 404
+    console.log(err.code)       // "not_found"
+    console.log(err.type)       // "not_found"
+  }
+}
+```
+
+Error classes:
+
+| Class | Status | When |
+|---|---|---|
+| `PigeonsError` | varies | Base class for all errors |
+| `ValidationError` | 400 | Invalid request parameters |
+| `AuthError` | 401 | Missing or invalid API key |
+| `NotFoundError` | 404 | Resource not found |
+| `RateLimitError` | 429 | Rate limit exceeded |
+
+
+============================================================
+Python SDK (python-sdk)
+============================================================
+
+---
+title: Python SDK
+description: Send emails, manage contacts, and build automations with the Python SDK.
+---
+
+## Install
+
+```bash
+pip install pigeons-py
+```
+
+## Initialize
+
+```python
+from pigeons import Pigeons
+
+pigeons = Pigeons(
+    base_url="https://pigeons.yourdomain.com",
+    api_key="pgn_your_key_here",
+)
+```
+
+Both options can be set via environment variables instead:
+
+| Option | Env var | Description |
+|---|---|---|
+| `base_url` | `PIGEONS_URL` | Pigeons server URL (no default) |
+| `api_key` | `PIGEONS_API_KEY` | API key starting with `pgn_` |
+
+Constructor values take precedence over environment variables.
+
+---
+
+## Emails
+
+### Send an email
+
+```python
+email = pigeons.emails.send(
+    to="alice@example.com",
+    subject="Welcome!",
+    html="<h1>Welcome aboard</h1>",
+)
+
+print(email.id)      # msg_abc123...
+print(email.status)  # "queued"
+```
+
+### Send with a template
+
+```python
+email = pigeons.emails.send(
+    to="alice@example.com",
+    template_id="welcome-email",  # slug or tpl_ ID
+    data={"name": "Alice", "company": "Acme"},
+)
+```
+
+### Multiple recipients
+
+```python
+email = pigeons.emails.send(
+    to=["alice@example.com", "bob@example.com"],
+    cc=["manager@example.com"],
+    subject="Team Update",
+    html="<p>Here is your update.</p>",
+)
+```
+
+### Schedule an email
+
+```python
+email = pigeons.emails.send(
+    to="alice@example.com",
+    subject="Reminder",
+    text="Your trial expires tomorrow.",
+    scheduled_at="2024-06-01T09:00:00Z",
+)
+```
+
+### Get email status
+
+```python
+email = pigeons.emails.get("msg_abc123...")
+print(email.status)  # "delivered"
+```
+
+### List emails
+
+```python
+page = pigeons.emails.list(limit=10, status="delivered")
+
+for email in page.data:
+    print(email.id, email.subject, email.status)
+
+if page.has_more:
+    next_page = pigeons.emails.list(cursor=page.next_cursor)
+```
+
+### Cancel a queued email
+
+```python
+cancelled = pigeons.emails.cancel("msg_abc123...")
+```
+
+### Batch send
+
+```python
+results = pigeons.emails.batch([
+    {"to": "alice@example.com", "subject": "Hi Alice", "text": "Hello!"},
+    {"to": "bob@example.com", "subject": "Hi Bob", "text": "Hello!"},
+])
+```
+
+### Idempotent sends
+
+```python
+email = pigeons.emails.send(
+    to="alice@example.com",
+    subject="Order #123",
+    html="...",
+    idempotency_key="order-123-confirmation",
+)
+```
+
+---
+
+## Contacts
+
+### Create a contact
+
+```python
+contact = pigeons.contacts.create(
+    email="alice@example.com",
+    first_name="Alice",
+    last_name="Smith",
+    tags=["newsletter", "beta"],
+    properties={"plan": "pro", "signup_source": "website"},
+)
+```
+
+### Get a contact
+
+```python
+# By ID
+contact = pigeons.contacts.get("ctc_abc123...")
+
+# By email
+contact = pigeons.contacts.get("alice@example.com")
+```
+
+### Update a contact
+
+```python
+updated = pigeons.contacts.update("ctc_abc123...", tags=["newsletter", "vip"])
+```
+
+### List contacts
+
+```python
+page = pigeons.contacts.list(tag="newsletter", limit=50)
+```
+
+### Delete a contact
+
+```python
+pigeons.contacts.delete("ctc_abc123...")
+```
+
+### Batch create
+
+```python
+result = pigeons.contacts.batch_create([
+    {"email": "alice@example.com", "first_name": "Alice", "tags": ["import"]},
+    {"email": "bob@example.com", "first_name": "Bob", "tags": ["import"]},
+])
+print(result.created)  # 2
+print(result.skipped)  # 0
+```
+
+### Unsubscribe / Resubscribe
+
+```python
+# Global unsubscribe
+pigeons.contacts.unsubscribe("ctc_abc123...")
+
+# Per-topic unsubscribe
+pigeons.contacts.unsubscribe("ctc_abc123...", topic_id="top_xyz...")
+
+# Resubscribe
+pigeons.contacts.resubscribe("ctc_abc123...")
+```
+
+---
+
+## Templates
+
+### Create a template
+
+```python
+template = pigeons.templates.create(
+    slug="welcome-email",
+    name="Welcome Email",
+    subject="Welcome, {{name}}!",
+    body="<h1>Welcome to {{company}}</h1><p>Hi {{name}},</p>",
+    sample_data={"name": "Alice", "company": "Acme"},
+)
+```
+
+### Get / Update / Delete
+
+```python
+tpl = pigeons.templates.get("welcome-email")  # by slug or ID
+updated = pigeons.templates.update("welcome-email", subject="New subject")
+pigeons.templates.delete("welcome-email")
+```
+
+### Preview a template
+
+```python
+preview = pigeons.templates.preview("welcome-email", data={"name": "Alice", "company": "Acme"})
+print(preview.subject)  # "Welcome, Alice!"
+print(preview.html)     # rendered HTML
+```
+
+---
+
+## Campaigns
+
+### Create and send a campaign
+
+```python
+campaign = pigeons.campaigns.create(
+    name="Product Launch",
+    template_id="product-launch",
+    template_data={"launch_date": "2024-06-01"},
+    audience_filter={"tags": {"contains": "newsletter"}},
+)
+
+# Send immediately
+pigeons.campaigns.send(campaign.id)
+
+# Or schedule
+pigeons.campaigns.send(campaign.id, scheduled_at="2024-06-01T09:00:00Z")
+```
+
+### Campaign lifecycle
+
+```python
+pigeons.campaigns.pause(campaign.id)
+pigeons.campaigns.resume(campaign.id)
+pigeons.campaigns.cancel(campaign.id)
+```
+
+### Monitor stats
+
+```python
+campaign = pigeons.campaigns.get("cmp_abc123...")
+print(campaign.stats)
+# {"total": 500, "sent": 450, "delivered": 440, "opened": 120, ...}
+```
+
+---
+
+## Sequences
+
+### Create a sequence
+
+```python
+sequence = pigeons.sequences.create(
+    name="Onboarding",
+    steps=[
+        {"type": "email", "template_id": "welcome-email", "subject": "Welcome!"},
+        {"type": "delay", "delay_duration": "1d"},
+        {"type": "email", "template_id": "getting-started", "subject": "Getting Started"},
+        {"type": "delay", "delay_duration": "3d"},
+        {"type": "email", "template_id": "tips", "subject": "Pro Tips"},
+    ],
+)
+```
+
+### Activate and enroll
+
+```python
+pigeons.sequences.activate(sequence.id)
+
+enrollment = pigeons.sequences.enroll(sequence.id, "ctc_abc123...")
+print(enrollment.status)  # "active"
+```
+
+### Monitor enrollments
+
+```python
+page = pigeons.sequences.enrollments(sequence.id, status="active")
+```
+
+---
+
+## Inboxes
+
+### Create an inbox
+
+```python
+inbox = pigeons.inboxes.create(
+    name="Support",
+    email_address="support@yourdomain.com",
+    webhook_url="https://your-app.com/webhooks/email",
+)
+```
+
+### Inbox operations
+
+```python
+pigeons.inboxes.pause(inbox.id)
+pigeons.inboxes.resume(inbox.id)
+pigeons.inboxes.set_catch_all(inbox.id)
+pigeons.inboxes.delete(inbox.id)
+```
+
+### Read messages
+
+```python
+messages = pigeons.inboxes.messages.list(inbox.id, direction="inbound", limit=10)
+
+message = pigeons.inboxes.messages.get(inbox.id, "imsg_abc123...")
+```
+
+### Send from an inbox
+
+```python
+sent = pigeons.inboxes.messages.create(
+    inbox.id,
+    to="customer@example.com",
+    subject="Re: Your ticket",
+    html="<p>Thanks for reaching out.</p>",
+    in_reply_to="imsg_previous...",  # maintains thread
+)
+```
+
+### Threads
+
+```python
+threads = pigeons.inboxes.threads.list(inbox.id, status="open")
+
+thread = pigeons.inboxes.threads.get(inbox.id, "thr_abc123...")
+
+pigeons.inboxes.threads.update(inbox.id, "thr_abc123...", status="closed")
+```
+
+---
+
+## Webhooks
+
+```python
+webhook = pigeons.webhooks.create(
+    url="https://your-app.com/webhooks/pigeons",
+    events=["email.delivered", "email.bounced", "inbox.message.received"],
+)
+
+# The secret is only returned on creation
+print(webhook.secret)  # "whsec_..."
+```
+
+---
+
+## Domains
+
+```python
+domain = pigeons.domains.add(domain="example.com")
+print(domain.records)  # DNS records to add
+
+# Re-check verification
+verified = pigeons.domains.verify(domain.id)
+print(verified.verification_status)  # "verified"
+```
+
+---
+
+## Error Handling
+
+All errors extend `PigeonsError`:
+
+```python
+from pigeons import PigeonsError, NotFoundError, AuthError, RateLimitError
+
+try:
+    pigeons.emails.get("msg_nonexistent")
+except NotFoundError as e:
+    print(e.message)      # "Email 'msg_nonexistent' not found"
+    print(e.status_code)  # 404
+    print(e.code)         # "not_found"
+except PigeonsError as e:
+    print(f"API error: {e.message}")
+```
+
+Error classes:
+
+| Class | Status | When |
+|---|---|---|
+| `PigeonsError` | varies | Base class for all errors |
+| `ValidationError` | 400 | Invalid request parameters |
+| `AuthError` | 401 | Missing or invalid API key |
+| `NotFoundError` | 404 | Resource not found |
+| `RateLimitError` | 429 | Rate limit exceeded |
+
+
+============================================================
+CLI (cli)
+============================================================
+
+---
+title: CLI
+description: Manage your Pigeons instance from the command line.
+---
+
+## Install
+
+```bash
+# Run directly
+npx @pigeons/cli <command>
+
+# Or install globally
+npm install -g @pigeons/cli
+pigeons <command>
+```
+
+## Configuration
+
+The CLI resolves credentials in this order:
+
+1. **Flags** - `--url` and `--api-key` passed to the command
+2. **Environment variables** - `PIGEONS_URL` and `PIGEONS_API_KEY`
+3. **Config file** - `~/.config/pigeons/config.json`
+
+### Login
+
+Store your server URL and API key in the config file:
+
+```bash
+pigeons login --url https://pigeons.yourdomain.com
+```
+
+You'll be prompted for your API key. Credentials are saved to `~/.config/pigeons/config.json`.
+
+### Check connection
+
+```bash
+pigeons whoami
+```
+
+Verifies the API key is valid and prints the key name and scopes.
+
+### Status
+
+```bash
+pigeons status
+```
+
+Shows server health, domain verification status, and recent email activity.
+
+---
+
+## Commands
+
+### send
+
+Send a single email:
+
+```bash
+pigeons send \
+  --to alice@example.com \
+  --subject "Hello from Pigeons" \
+  --html "<h1>Hello!</h1>"
+```
+
+Options:
+
+| Flag | Required | Description |
+|---|---|---|
+| `--to <email>` | Yes | Recipient address |
+| `--subject <text>` | Yes | Subject line |
+| `--from <email>` | No | Sender address (uses server default) |
+| `--html <html>` | Conditional | HTML body (required if no `--text`) |
+| `--text <text>` | Conditional | Plain text body (required if no `--html`) |
+
+### emails
+
+```bash
+pigeons emails list              # list recent emails
+pigeons emails get <id>          # get email details
+```
+
+### domains
+
+```bash
+pigeons domains add <domain>     # add a new domain
+pigeons domains list             # list all domains
+pigeons domains verify <id>      # re-check DNS verification
+```
+
+When you add a domain, Pigeons registers it with SES and returns the DNS records you need to add. Run `verify` after adding the records to confirm verification.
+
+### contacts
+
+```bash
+pigeons contacts list            # list contacts
+pigeons contacts list --tag vip  # filter by tag
+```
+
+### templates
+
+```bash
+pigeons templates list           # list all templates
+```
+
+### campaigns
+
+```bash
+pigeons campaigns list           # list campaigns
+pigeons campaigns list --status draft  # filter by status
+```
+
+### sequences
+
+```bash
+pigeons sequences list           # list sequences
+```
+
+### webhooks
+
+```bash
+pigeons webhooks list            # list webhooks
+```
+
+### topics
+
+```bash
+pigeons topics list              # list subscription topics
+```
+
+### inboxes
+
+```bash
+pigeons inboxes list             # list inboxes
+```
+
+### setup aws
+
+Provision all AWS resources needed for a Pigeons instance:
+
+```bash
+pigeons setup aws
+```
+
+The wizard interactively collects your AWS credentials, region, and domain, then creates:
+
+- SES domain identity with DKIM
+- SES configuration set (`pigeons-tracking`)
+- SNS topic for delivery events
+- S3 bucket for inbound emails (unless `--skip-inbound`)
+- SNS topic for inbound notifications
+- SES receipt rule set and rule
+
+At the end it prints:
+- DNS records to add (DKIM CNAMEs, SPF, MX, DMARC)
+- Environment variables to set
+- SNS topic ARNs to subscribe to your server
+
+Options:
+
+```bash
+pigeons setup aws \
+  --region us-east-1 \
+  --domain yourdomain.com \
+  --access-key-id AKIA... \
+  --secret-access-key ... \
+  --skip-inbound
+```
+
+SES inbound email is only available in `us-east-1`, `us-west-2`, and `eu-west-1`. If you choose another region, inbound setup is automatically skipped.
+
+---
+
+## Global Options
+
+Every command accepts:
+
+| Flag | Description |
+|---|---|
+| `--url <url>` | Override the Pigeons instance URL |
+| `--api-key <key>` | Override the API key |
+
+
+============================================================
+MCP Server (mcp)
+============================================================
+
+---
+title: MCP Server
+description: Give LLM agents the ability to send emails, manage inboxes, and run campaigns.
+---
+
+## Overview
+
+The Pigeons MCP (Model Context Protocol) server exposes Pigeons operations as tools that LLM agents can call. This lets Claude, GPT, and other agents send emails, manage contacts, read inboxes, and run campaigns through natural language.
+
+## Install
+
+```bash
+npm install -g @pigeons/mcp
+```
+
+## Configure in Claude Desktop
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pigeons": {
+      "command": "npx",
+      "args": ["-y", "@pigeons/mcp", "--url", "https://pigeons.yourdomain.com", "--api-key", "pgn_your_key_here"]
+    }
+  }
+}
+```
+
+Or use environment variables:
+
+```json
+{
+  "mcpServers": {
+    "pigeons": {
+      "command": "npx",
+      "args": ["-y", "@pigeons/mcp"],
+      "env": {
+        "PIGEONS_URL": "https://pigeons.yourdomain.com",
+        "PIGEONS_API_KEY": "pgn_your_key_here"
+      }
+    }
+  }
+}
+```
+
+## Configure in Claude Code
+
+Add to your project's `.claude/settings.json` or global settings:
+
+```json
+{
+  "mcpServers": {
+    "pigeons": {
+      "command": "npx",
+      "args": ["-y", "@pigeons/mcp"],
+      "env": {
+        "PIGEONS_URL": "https://pigeons.yourdomain.com",
+        "PIGEONS_API_KEY": "pgn_your_key_here"
+      }
+    }
+  }
+}
+```
+
+## Available Tools
+
+### Email tools
+
+| Tool | Description |
+|---|---|
+| `send_email` | Send a transactional email with HTML/text or a template |
+| `get_email` | Get email details and delivery status by ID |
+| `list_emails` | List sent emails with optional status filtering |
+
+### Inbox tools
+
+| Tool | Description |
+|---|---|
+| `create_inbox` | Create a new agent inbox with a real email address |
+| `list_inboxes` | List all agent inboxes |
+| `get_inbox_messages` | Get messages for an inbox, optionally filtered by thread or direction |
+| `get_thread` | Get a full conversation thread |
+| `reply_to_message` | Send a reply from an inbox, maintaining the conversation thread |
+| `update_thread_status` | Update thread status (open, closed, snoozed) |
+
+### Contact tools
+
+| Tool | Description |
+|---|---|
+| `create_contact` | Create a new contact |
+| `search_contacts` | List contacts with tag or email filtering |
+| `update_contact` | Update a contact's properties, tags, or name |
+
+### Template tools
+
+| Tool | Description |
+|---|---|
+| `list_templates` | List available email templates |
+| `preview_template` | Render a template with sample data |
+
+### Campaign tools
+
+| Tool | Description |
+|---|---|
+| `create_campaign` | Create a draft email campaign |
+| `list_campaigns` | List campaigns with optional status filter |
+| `get_campaign` | Get campaign details and statistics |
+| `send_campaign` | Send or schedule a campaign |
+| `cancel_campaign` | Cancel a sending or scheduled campaign |
+
+### Sequence tools
+
+| Tool | Description |
+|---|---|
+| `create_sequence` | Create a multi-step email sequence |
+| `list_sequences` | List sequences |
+| `get_sequence` | Get sequence details with steps and stats |
+| `activate_sequence` | Activate a sequence |
+| `pause_sequence` | Pause an active sequence |
+| `enroll_in_sequence` | Enroll a contact in a sequence |
+
+### Topic tools
+
+| Tool | Description |
+|---|---|
+| `create_topic` | Create a subscription topic |
+| `list_topics` | List subscription topics |
+| `get_topic` | Get topic details |
+| `delete_topic` | Delete a topic |
+
+## Resources
+
+The MCP server also exposes read-only resources:
+
+| Resource URI | Description |
+|---|---|
+| `pigeons://inboxes` | All agent inboxes and their email addresses |
+| `pigeons://templates` | Available templates with slugs and variable schemas |
+| `pigeons://domains` | Verified sending domains and their status |
+
+## Example Prompts
+
+Once configured, you can ask your LLM agent:
+
+- "Send a welcome email to alice@example.com using the welcome-email template"
+- "Check the status of email msg_abc123"
+- "Show me all undelivered emails from today"
+- "Create an inbox for support@mycompany.com"
+- "Read the latest messages in the support inbox"
+- "Reply to the customer in thread thr_xyz saying we'll look into it"
+- "Create a campaign called 'Product Launch' targeting contacts tagged with 'beta'"
+- "What are the delivery stats for the Product Launch campaign?"
+- "Create an onboarding sequence with a welcome email, 1-day delay, then a getting-started email"
+- "Enroll contact ctc_abc123 in the onboarding sequence"
+
+
+============================================================
+Domains & DNS (domains)
+============================================================
+
+---
+title: Domains
+description: Add, verify, and configure sending domains.
+---
+
+## Add a Domain
+
+Register a domain with Pigeons and SES:
+
+```bash
+curl -X POST http://localhost:3891/v1/domains \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"domain": "yourdomain.com"}'
+```
+
+Or via the CLI:
+
+```bash
+pigeons domains add yourdomain.com
+```
+
+Pigeons calls `CreateEmailIdentity` on SES, which returns DKIM tokens. The response includes the full list of DNS records you need to add.
+
+## DNS Records
+
+After adding a domain, you need to configure these DNS records:
+
+### DKIM (required)
+
+Three CNAME records for email authentication. The exact values come from the domain response:
+
+```
+CNAME  token1._domainkey.yourdomain.com  →  token1.dkim.amazonses.com
+CNAME  token2._domainkey.yourdomain.com  →  token2.dkim.amazonses.com
+CNAME  token3._domainkey.yourdomain.com  →  token3.dkim.amazonses.com
+```
+
+### SPF (required)
+
+A TXT record authorizing SES to send on your behalf:
+
+```
+TXT  mail.yourdomain.com  →  "v=spf1 include:amazonses.com ~all"
+```
+
+### DMARC (recommended)
+
+A TXT record for DMARC policy. Start with `quarantine` and tighten to `reject` once deliverability is confirmed:
+
+```
+TXT  _dmarc.yourdomain.com  →  "v=DMARC1; p=quarantine; rua=mailto:dmarc@yourdomain.com"
+```
+
+### MX for outbound feedback
+
+An MX record for bounce feedback:
+
+```
+MX  mail.yourdomain.com  →  10 feedback-smtp.us-east-1.amazonses.com
+```
+
+Replace `us-east-1` with your SES region.
+
+### MX for inbound (optional)
+
+If you want to receive email through Pigeons inboxes:
+
+```
+MX  yourdomain.com  →  10 inbound-smtp.us-east-1.amazonaws.com
+```
+
+Inbound MX is only available in `us-east-1`, `us-west-2`, and `eu-west-1`.
+
+## Verification
+
+After adding DNS records, trigger a verification check:
+
+```bash
+curl http://localhost:3891/v1/domains/dom_abc123.../verify \
+  -H "x-api-key: pgn_..."
+```
+
+Or:
+
+```bash
+pigeons domains verify dom_abc123...
+```
+
+Pigeons queries SES for the identity's current verification state and updates the stored status. DNS propagation typically takes 5-10 minutes, but can take up to 72 hours.
+
+The domain object tracks three verification fields:
+
+| Field | Description |
+|---|---|
+| `verificationStatus` | Overall status: `pending`, `verified`, or `failed` |
+| `spfVerified` | Whether SPF record is detected |
+| `dmarcVerified` | Whether DMARC record is detected |
+
+## Domain Stats
+
+Check sending metrics for a domain:
+
+```bash
+curl http://localhost:3891/v1/domains/dom_abc123.../stats \
+  -H "x-api-key: pgn_..."
+```
+
+Returns delivery rates, bounce rates, and warmup guidance across three time windows (24h, 7d, 30d).
+
+## Region Considerations
+
+Each domain is associated with an AWS region. SES treats each region as a separate sending environment:
+
+- Sending reputation is per-region
+- Sandbox status is per-region
+- Inbound email is only available in `us-east-1`, `us-west-2`, and `eu-west-1`
+- DKIM tokens are region-specific
+
+If you need to send from multiple regions, add the same domain in each region. DNS records may differ.
+
+## SES Sandbox vs Production
+
+New SES accounts start in **sandbox mode** per region. In sandbox:
+
+- You can only send to verified email addresses
+- Daily sending limit: 200 emails
+- Maximum send rate: 1 email per second
+- You can test with SES simulator addresses:
+  - `success@simulator.amazonses.com` - simulates successful delivery
+  - `bounce@simulator.amazonses.com` - simulates a hard bounce
+  - `complaint@simulator.amazonses.com` - simulates a complaint
+
+To move out of sandbox, request production access in the AWS console for your region. AWS reviews the request (typically 24 hours) and evaluates your sending use case.
+
+## Capabilities
+
+When adding a domain, you can specify capabilities:
+
+```json
+{
+  "domain": "yourdomain.com",
+  "capabilities": {
+    "sending": true,
+    "receiving": false
+  }
+}
+```
+
+- `sending: true` - domain can be used as a `from` address (default)
+- `receiving: true` - domain accepts inbound email through Pigeons inboxes (requires MX record and SES receipt rule)
+
+## Delete a Domain
+
+```bash
+curl -X DELETE http://localhost:3891/v1/domains/dom_abc123... \
+  -H "x-api-key: pgn_..."
+```
+
+This removes the domain from Pigeons and deletes the SES identity. DNS records should be cleaned up manually.
+
+
+============================================================
+Contacts (contacts)
+============================================================
+
+---
+title: Contacts
+description: Manage contacts, tags, properties, and subscription preferences.
+---
+
+## Create a Contact
+
+```bash
+curl -X POST http://localhost:3891/v1/contacts \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "alice@example.com",
+    "firstName": "Alice",
+    "lastName": "Smith",
+    "tags": ["newsletter", "beta"],
+    "properties": {"plan": "pro", "company": "Acme"}
+  }'
+```
+
+```typescript
+const contact = await pigeons.contacts.create({
+  email: 'alice@example.com',
+  firstName: 'Alice',
+  tags: ['newsletter', 'beta'],
+  properties: { plan: 'pro', company: 'Acme' },
+})
+```
+
+Email addresses must be unique. Creating a contact with an existing email returns a 409 conflict.
+
+## Tags
+
+Tags are freeform strings used for segmentation. Use them to categorize contacts and target campaigns.
+
+```json
+{
+  "tags": ["newsletter", "beta", "enterprise"]
+}
+```
+
+Tags are stored as an array on the contact. When updating tags, the entire array is replaced (not merged). To add a tag without removing existing ones, read the current tags first.
+
+### Filter by tag
+
+```bash
+curl "http://localhost:3891/v1/contacts?tag=newsletter" \
+  -H "x-api-key: pgn_..."
+```
+
+### Use tags in audience filters
+
+Campaigns and sequences use tags to target recipients:
+
+```json
+{
+  "audienceFilter": {
+    "tags": {
+      "contains": "newsletter"
+    }
+  }
+}
+```
+
+Available tag filters:
+
+| Filter | Description |
+|---|---|
+| `contains` | Contact must have this tag |
+| `containsAny` | Contact must have at least one of these tags |
+| `containsAll` | Contact must have all of these tags |
+
+## Properties
+
+Properties are arbitrary key-value data stored on a contact. Use them for structured data that doesn't fit tags.
+
+```json
+{
+  "properties": {
+    "plan": "pro",
+    "company": "Acme",
+    "signupDate": "2024-01-15",
+    "referralSource": "website"
+  }
+}
+```
+
+Properties can be used in audience filters for campaigns:
+
+```json
+{
+  "audienceFilter": {
+    "properties": {
+      "plan": "pro"
+    }
+  }
+}
+```
+
+Property filters match on exact equality.
+
+## Batch Import
+
+Import up to 1000 contacts in a single request:
+
+```bash
+curl -X POST http://localhost:3891/v1/contacts/batch \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"email": "alice@example.com", "firstName": "Alice", "tags": ["import"]},
+    {"email": "bob@example.com", "firstName": "Bob", "tags": ["import"]},
+    {"email": "carol@example.com", "firstName": "Carol", "tags": ["import"]}
+  ]'
+```
+
+```typescript
+const result = await pigeons.contacts.batchCreate([
+  { email: 'alice@example.com', firstName: 'Alice', tags: ['import'] },
+  { email: 'bob@example.com', firstName: 'Bob', tags: ['import'] },
+  { email: 'carol@example.com', firstName: 'Carol', tags: ['import'] },
+])
+// { created: 3, skipped: 0, contacts: [...] }
+```
+
+Existing email addresses are silently skipped and counted in the `skipped` field.
+
+## List with Filters
+
+```bash
+# List all contacts
+curl "http://localhost:3891/v1/contacts" -H "x-api-key: pgn_..."
+
+# Filter by tag
+curl "http://localhost:3891/v1/contacts?tag=newsletter" -H "x-api-key: pgn_..."
+
+# Paginate
+curl "http://localhost:3891/v1/contacts?limit=50&cursor=2024-01-15T10:30:00.000Z" \
+  -H "x-api-key: pgn_..."
+```
+
+## Get by ID or Email
+
+Contacts can be retrieved by either their ID (`ctc_...`) or email address:
+
+```bash
+# By ID
+curl http://localhost:3891/v1/contacts/ctc_abc123... -H "x-api-key: pgn_..."
+
+# By email
+curl http://localhost:3891/v1/contacts/alice@example.com -H "x-api-key: pgn_..."
+```
+
+The same applies to update, delete, unsubscribe, and resubscribe endpoints.
+
+## Unsubscribe Handling
+
+### Global unsubscribe
+
+Marks the contact as unsubscribed from all emails. Campaigns and sequences skip unsubscribed contacts.
+
+```bash
+curl -X POST http://localhost:3891/v1/contacts/ctc_abc123.../unsubscribe \
+  -H "x-api-key: pgn_..."
+```
+
+### Per-topic unsubscribe
+
+Unsubscribe from a specific topic (e.g. "marketing" but not "product-updates"). First create subscription topics, then pass the topic ID:
+
+```bash
+curl -X POST http://localhost:3891/v1/contacts/ctc_abc123.../unsubscribe \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"topicId": "top_xyz..."}'
+```
+
+Campaigns linked to a topic via `topicId` will skip contacts unsubscribed from that topic.
+
+### Resubscribe
+
+```bash
+# Global resubscribe
+curl -X POST http://localhost:3891/v1/contacts/ctc_abc123.../resubscribe \
+  -H "x-api-key: pgn_..."
+
+# Per-topic resubscribe
+curl -X POST http://localhost:3891/v1/contacts/ctc_abc123.../resubscribe \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"topicId": "top_xyz..."}'
+```
+
+## Automatic Status Tracking
+
+Pigeons automatically updates contact status based on email events:
+
+| Field | Set when |
+|---|---|
+| `bounced` / `bouncedAt` | SES reports a hard bounce for this contact |
+| `complained` / `complainedAt` | SES reports a complaint (spam report) |
+| `unsubscribed` / `unsubscribedAt` | Unsubscribe endpoint is called |
+
+Campaigns and sequences automatically exclude contacts where `unsubscribed`, `bounced`, or `complained` is true.
+
+
+============================================================
+Templates (templates)
+============================================================
+
+---
+title: Templates
+description: Create reusable email templates with variables for campaigns and transactional sends.
+---
+
+## Create a Template
+
+Templates have a unique slug, a subject line, and an HTML body. Both subject and body support `{{variable}}` interpolation.
+
+```bash
+curl -X POST http://localhost:3891/v1/templates \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "slug": "welcome-email",
+    "name": "Welcome Email",
+    "subject": "Welcome, {{name}}!",
+    "body": "<h1>Welcome to {{company}}</h1><p>Hi {{name}}, thanks for signing up.</p>",
+    "sampleData": {"name": "Alice", "company": "Acme"}
+  }'
+```
+
+```typescript
+const template = await pigeons.templates.create({
+  slug: 'welcome-email',
+  name: 'Welcome Email',
+  subject: 'Welcome, {{name}}!',
+  body: '<h1>Welcome to {{company}}</h1><p>Hi {{name}}, thanks for signing up.</p>',
+  sampleData: { name: 'Alice', company: 'Acme' },
+})
+```
+
+### Slug rules
+
+- Lowercase letters, numbers, and hyphens only
+- Must be unique across all templates
+- Used as a stable identifier in API calls (alternative to `tpl_` IDs)
+
+## Variables
+
+Use `{{variableName}}` in both the subject and body. Variables are replaced with values from the `data` object at send time.
+
+```html
+<h1>Welcome to {{company}}</h1>
+<p>Hi {{name}},</p>
+<p>Your account is ready. Your plan: {{plan}}.</p>
+```
+
+Sent with:
+
+```json
+{
+  "data": {
+    "name": "Alice",
+    "company": "Acme",
+    "plan": "Pro"
+  }
+}
+```
+
+Produces:
+
+```html
+<h1>Welcome to Acme</h1>
+<p>Hi Alice,</p>
+<p>Your account is ready. Your plan: Pro.</p>
+```
+
+## Sample Data
+
+The `sampleData` field stores default variable values for previewing the template without passing data:
+
+```json
+{
+  "sampleData": {
+    "name": "Alice",
+    "company": "Acme",
+    "plan": "Pro"
+  }
+}
+```
+
+This data is used by the preview endpoint and is never sent to real recipients.
+
+## Preview a Template
+
+Render a template without sending:
+
+```bash
+curl -X POST http://localhost:3891/v1/templates/welcome-email/preview \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"name": "Bob", "company": "Widgets Inc"}}'
+```
+
+If no `data` is provided, the template's `sampleData` is used.
+
+Response:
+
+```json
+{
+  "subject": "Welcome, Bob!",
+  "html": "<h1>Welcome to Widgets Inc</h1>...",
+  "text": "Welcome to Widgets Inc..."
+}
+```
+
+The response includes both HTML and a plain-text version automatically generated from the HTML.
+
+## Using Templates in Sends
+
+### Direct send
+
+Pass the template slug or ID in `templateId`, and variables in `data`:
+
+```bash
+curl -X POST http://localhost:3891/v1/emails \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "alice@example.com",
+    "templateId": "welcome-email",
+    "data": {"name": "Alice", "company": "Acme"}
+  }'
+```
+
+```typescript
+const email = await pigeons.emails.send({
+  to: 'alice@example.com',
+  templateId: 'welcome-email',
+  data: { name: 'Alice', company: 'Acme' },
+})
+```
+
+The subject is rendered from the template. You can override it by passing `subject` explicitly.
+
+### In campaigns
+
+Assign a template to a campaign. The `templateData` provides variables:
+
+```typescript
+const campaign = await pigeons.campaigns.create({
+  name: 'Product Launch',
+  templateId: 'product-launch',
+  templateData: { launchDate: '2024-06-01', featureName: 'Dark Mode' },
+  audienceFilter: { tags: { contains: 'newsletter' } },
+})
+```
+
+### In sequences
+
+Each email step in a sequence can reference a template:
+
+```typescript
+const sequence = await pigeons.sequences.create({
+  name: 'Onboarding',
+  steps: [
+    { type: 'email', templateId: 'welcome-email', subject: 'Welcome!' },
+    { type: 'delay', delayDuration: '1d' },
+    { type: 'email', templateId: 'getting-started' },
+  ],
+})
+```
+
+## Lookup by Slug or ID
+
+All template endpoints accept either the `tpl_` prefixed ID or the slug:
+
+```bash
+# By slug
+curl http://localhost:3891/v1/templates/welcome-email -H "x-api-key: pgn_..."
+
+# By ID
+curl http://localhost:3891/v1/templates/tpl_abc123... -H "x-api-key: pgn_..."
+```
+
+## Versioning
+
+Templates are automatically versioned. The `version` field starts at 1 and increments when you update the `subject` or `body`. This lets you track changes over time.
+
+```typescript
+const updated = await pigeons.templates.update('welcome-email', {
+  body: '<h1>New design</h1><p>Hi {{name}}</p>',
+})
+console.log(updated.version) // 2
+```
+
+Updating only `name` or `sampleData` does not increment the version.
+
+## Delete a Template
+
+```bash
+curl -X DELETE http://localhost:3891/v1/templates/welcome-email \
+  -H "x-api-key: pgn_..."
+```
+
+Deleting a template does not affect emails already sent using it.
+
+
+============================================================
+Inboxes (inboxes)
+============================================================
+
+---
+title: Inboxes
+description: Receive email into Pigeons with SES inbound, threading, and webhook delivery.
+---
+
+## Overview
+
+Pigeons inboxes let you receive email at real addresses and access messages via API. The inbound pipeline:
+
+1. Someone sends email to `support@yourdomain.com`
+2. SES receipt rule saves the raw MIME to S3 and notifies via SNS
+3. Pigeons receives the SNS notification, fetches the email from S3, parses it
+4. The message is routed to the matching inbox, threaded, and stored
+5. Webhooks fire with the `inbox.message.received` event
+
+## Prerequisites
+
+Inbound email requires:
+
+- An AWS region that supports SES inbound (`us-east-1`, `us-west-2`, or `eu-west-1`)
+- An S3 bucket for raw MIME storage
+- An SNS topic for inbound notifications
+- An SES receipt rule routing your domain to S3 + SNS
+- An MX record pointing your domain to SES inbound
+
+The easiest way to set all this up is the CLI wizard:
+
+```bash
+pigeons setup aws --domain yourdomain.com
+```
+
+## Manual SES Setup
+
+### 1. S3 bucket
+
+Create a bucket (e.g. `pigeons-inbound-yourdomain-com`) with a policy allowing SES to write objects:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "AllowSESPut",
+    "Effect": "Allow",
+    "Principal": {"Service": "ses.amazonaws.com"},
+    "Action": "s3:PutObject",
+    "Resource": "arn:aws:s3:::pigeons-inbound-yourdomain-com/*",
+    "Condition": {"StringEquals": {"AWS:SourceAccount": "123456789012"}}
+  }]
+}
+```
+
+Set these environment variables:
+
+```
+PIGEONS_INBOUND_S3_BUCKET=pigeons-inbound-yourdomain-com
+PIGEONS_INBOUND_S3_KEY_PREFIX=inbound/
+```
+
+### 2. SNS topic
+
+Create an SNS topic (e.g. `pigeons-inbound-yourdomain-com`) and subscribe it to your Pigeons server:
+
+```bash
+aws sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:123456789:pigeons-inbound-yourdomain-com \
+  --protocol https \
+  --endpoint https://pigeons.yourdomain.com/v1/internal/ses/inbound
+```
+
+### 3. SES receipt rule
+
+Create a receipt rule set and rule:
+
+```bash
+# Create rule set (one-time)
+aws ses create-receipt-rule-set --rule-set-name pigeons-inbound
+aws ses set-active-receipt-rule-set --rule-set-name pigeons-inbound
+
+# Create rule for your domain
+aws ses create-receipt-rule \
+  --rule-set-name pigeons-inbound \
+  --rule '{
+    "Name": "pigeons-yourdomain-com",
+    "Enabled": true,
+    "Recipients": ["yourdomain.com"],
+    "Actions": [
+      {"S3Action": {"BucketName": "pigeons-inbound-yourdomain-com", "ObjectKeyPrefix": "inbound/"}},
+      {"SNSAction": {"TopicArn": "arn:aws:sns:us-east-1:123456789:pigeons-inbound-yourdomain-com", "Encoding": "UTF-8"}}
+    ],
+    "ScanEnabled": true
+  }'
+```
+
+### 4. MX record
+
+Point your domain to SES inbound:
+
+```
+MX  yourdomain.com  →  10 inbound-smtp.us-east-1.amazonaws.com
+```
+
+## Create an Inbox
+
+```bash
+curl -X POST http://localhost:3891/v1/inboxes \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Support",
+    "emailAddress": "support@yourdomain.com",
+    "description": "Customer support inbox",
+    "webhookUrl": "https://your-app.com/webhooks/email"
+  }'
+```
+
+```typescript
+const inbox = await pigeons.inboxes.create({
+  name: 'Support',
+  emailAddress: 'support@yourdomain.com',
+  webhookUrl: 'https://your-app.com/webhooks/email',
+})
+```
+
+The `emailAddress` must belong to a domain with inbound capabilities configured.
+
+## Webhook Delivery
+
+When a message arrives, Pigeons fires a webhook to the inbox's `webhookUrl` (if set) and to any globally registered webhooks subscribed to `inbox.message.received`.
+
+Webhook payload:
+
+```json
+{
+  "event": "inbox.message.received",
+  "data": {
+    "inbox_id": "inb_abc123...",
+    "message_id": "imsg_xyz789...",
+    "thread_id": "thr_def456...",
+    "from": "customer@example.com",
+    "to": ["support@yourdomain.com"],
+    "subject": "Help with my order",
+    "text": "I need help with order #123...",
+    "direction": "inbound"
+  }
+}
+```
+
+## Threading
+
+Pigeons automatically threads messages using email headers:
+
+1. **In-Reply-To** / **References** headers - standard email threading
+2. **Subject matching** - messages with the same subject and participants are grouped
+
+Each thread tracks:
+
+| Field | Description |
+|---|---|
+| `id` | Thread ID (`thr_...`) |
+| `subject` | Thread subject |
+| `lastMessageAt` | Timestamp of the most recent message |
+| `messageCount` | Number of messages in the thread |
+| `participants` | Array of `{ email, name? }` |
+| `status` | `open`, `closed`, or `snoozed` |
+
+### List threads
+
+```bash
+curl "http://localhost:3891/v1/inboxes/inb_abc123.../threads?status=open" \
+  -H "x-api-key: pgn_..."
+```
+
+### Get messages in a thread
+
+```bash
+curl "http://localhost:3891/v1/inboxes/inb_abc123.../messages?thread_id=thr_def456..." \
+  -H "x-api-key: pgn_..."
+```
+
+### Update thread status
+
+```bash
+curl -X PATCH http://localhost:3891/v1/inboxes/inb_abc123.../threads/thr_def456... \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"status": "closed"}'
+```
+
+## Send from an Inbox
+
+Reply to a message or start a new conversation:
+
+```bash
+curl -X POST http://localhost:3891/v1/inboxes/inb_abc123.../messages \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "customer@example.com",
+    "subject": "Re: Help with my order",
+    "html": "<p>Thanks for reaching out. Let me look into order #123.</p>",
+    "inReplyTo": "imsg_previous..."
+  }'
+```
+
+The `inReplyTo` field maintains threading. When set, the outbound message is added to the same thread as the referenced message.
+
+## Reply Extraction
+
+Inbound messages include both the full content and extracted content:
+
+| Field | Description |
+|---|---|
+| `html` | Full HTML body |
+| `text` | Full plain text body |
+| `extractedHtml` | Just the new reply (quoted text stripped) |
+| `extractedText` | Just the new reply as plain text |
+
+Use the `extracted*` fields to show only the new content without quoted reply chains.
+
+## Catch-All Inbox
+
+Designate one inbox as the catch-all to receive messages that don't match any other inbox:
+
+```bash
+curl -X POST http://localhost:3891/v1/inboxes/inb_abc123.../catch-all \
+  -H "x-api-key: pgn_..."
+```
+
+Only one inbox can be catch-all at a time. Setting a new catch-all removes the flag from the previous one.
+
+When an inbound email arrives for an address that doesn't match any inbox's `emailAddress`, it routes to the catch-all inbox. If no catch-all is configured, unmatched messages are discarded.
+
+## Pause and Resume
+
+```bash
+# Pause - stops accepting new messages
+curl -X POST http://localhost:3891/v1/inboxes/inb_abc123.../pause -H "x-api-key: pgn_..."
+
+# Resume
+curl -X POST http://localhost:3891/v1/inboxes/inb_abc123.../resume -H "x-api-key: pgn_..."
+```
+
+Paused inboxes still receive email at the SES level, but Pigeons does not store or process the messages.
+
+## Message Attachments
+
+Inbound messages with attachments include an `attachments` array:
+
+```json
+{
+  "attachments": [
+    {
+      "filename": "invoice.pdf",
+      "contentType": "application/pdf",
+      "size": 45231,
+      "s3Key": "inbound/attachment/..."
+    }
+  ]
+}
+```
+
+The `s3Key` can be used to download the attachment from the inbound S3 bucket.
+
+
+============================================================
+Campaigns & Sequences (campaigns)
+============================================================
+
+---
+title: Campaigns & Sequences
+description: Send bulk campaigns to targeted audiences and build multi-step automated sequences.
+---
+
+## Campaigns
+
+A campaign sends one email to a set of contacts, filtered by tags and properties.
+
+### Lifecycle
+
+```
+draft → sending → sent
+         ↓  ↑
+        paused
+
+draft → scheduled → sending → sent
+                      ↓
+                   cancelled
+```
+
+| Status | Meaning |
+|---|---|
+| `draft` | Campaign is being configured. Can be edited. |
+| `scheduled` | Waiting for `scheduledAt` time. Can be cancelled. |
+| `sending` | Actively sending to recipients. Can be paused or cancelled. |
+| `paused` | Sending paused. Can be resumed. |
+| `sent` | All emails have been processed. |
+| `cancelled` | Campaign was cancelled before completing. |
+
+### Create a campaign
+
+```bash
+curl -X POST http://localhost:3891/v1/campaigns \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "October Newsletter",
+    "templateId": "monthly-newsletter",
+    "templateData": {"month": "October", "highlight": "New API features"},
+    "audienceFilter": {"tags": {"contains": "newsletter"}},
+    "fromName": "Acme Updates",
+    "fromEmail": "newsletter@yourdomain.com"
+  }'
+```
+
+```typescript
+const campaign = await pigeons.campaigns.create({
+  name: 'October Newsletter',
+  templateId: 'monthly-newsletter',
+  templateData: { month: 'October', highlight: 'New API features' },
+  audienceFilter: { tags: { contains: 'newsletter' } },
+  fromName: 'Acme Updates',
+  fromEmail: 'newsletter@yourdomain.com',
+})
+```
+
+### Audience Filters
+
+The `audienceFilter` object determines which contacts receive the campaign. Contacts where `unsubscribed`, `bounced`, or `complained` is true are always excluded.
+
+#### Filter by tags
+
+```json
+{
+  "audienceFilter": {
+    "tags": {
+      "contains": "newsletter"
+    }
+  }
+}
+```
+
+| Operator | Description |
+|---|---|
+| `contains` | Contact must have this exact tag |
+| `containsAny` | Contact must have at least one of these tags |
+| `containsAll` | Contact must have all of these tags |
+
+```json
+{
+  "tags": {
+    "containsAll": ["newsletter", "active"],
+    "containsAny": ["pro", "enterprise"]
+  }
+}
+```
+
+#### Filter by properties
+
+```json
+{
+  "audienceFilter": {
+    "properties": {
+      "plan": "pro",
+      "region": "us"
+    }
+  }
+}
+```
+
+Properties match on exact equality. All specified properties must match.
+
+#### Combined filters
+
+```json
+{
+  "audienceFilter": {
+    "tags": {"contains": "newsletter"},
+    "properties": {"plan": "pro"}
+  }
+}
+```
+
+#### No filter
+
+Omit `audienceFilter` to target all eligible contacts (those not unsubscribed, bounced, or complained).
+
+### Send a campaign
+
+```bash
+# Send immediately
+curl -X POST http://localhost:3891/v1/campaigns/cmp_abc123.../send \
+  -H "x-api-key: pgn_..."
+
+# Schedule for later
+curl -X POST http://localhost:3891/v1/campaigns/cmp_abc123.../send \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"scheduledAt": "2024-06-01T09:00:00Z"}'
+```
+
+The campaign must have either a `templateId` or a `subject`. When sending, Pigeons:
+
+1. Queries all contacts matching the audience filter
+2. Excludes unsubscribed, bounced, and complained contacts
+3. Creates a job to send to each eligible contact
+4. Updates the `stats.total` field with the audience size
+
+If no eligible contacts match, the send fails with a validation error.
+
+### Pause / Resume / Cancel
+
+```bash
+# Pause (only while sending)
+curl -X POST http://localhost:3891/v1/campaigns/cmp_abc123.../pause \
+  -H "x-api-key: pgn_..."
+
+# Resume (only while paused)
+curl -X POST http://localhost:3891/v1/campaigns/cmp_abc123.../resume \
+  -H "x-api-key: pgn_..."
+
+# Cancel (while sending or scheduled)
+curl -X POST http://localhost:3891/v1/campaigns/cmp_abc123.../cancel \
+  -H "x-api-key: pgn_..."
+```
+
+### Campaign stats
+
+```typescript
+const campaign = await pigeons.campaigns.get('cmp_abc123...')
+console.log(campaign.stats)
+```
+
+```json
+{
+  "total": 500,
+  "sent": 450,
+  "delivered": 440,
+  "opened": 120,
+  "bounced": 5,
+  "complained": 1,
+  "failed": 4
+}
+```
+
+Stats update in real time as SES delivery events arrive. The `opened` count requires [open tracking](/docs/open-tracking) to be enabled.
+
+### Topic-scoped campaigns
+
+Link a campaign to a subscription topic so contacts who unsubscribed from that specific topic are excluded:
+
+```typescript
+const campaign = await pigeons.campaigns.create({
+  name: 'Marketing Update',
+  topicId: 'top_marketing...',
+  templateId: 'marketing-update',
+  audienceFilter: { tags: { contains: 'active' } },
+})
+```
+
+---
+
+## Sequences
+
+A sequence is a multi-step automation that sends a series of emails to individual contacts over time.
+
+### Create a sequence
+
+```bash
+curl -X POST http://localhost:3891/v1/sequences \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Onboarding",
+    "steps": [
+      {"type": "email", "templateId": "welcome-email", "subject": "Welcome!"},
+      {"type": "delay", "delayDuration": "1d"},
+      {"type": "email", "templateId": "getting-started", "subject": "Getting Started"},
+      {"type": "delay", "delayDuration": "3d"},
+      {"type": "email", "templateId": "tips", "subject": "Pro Tips"}
+    ]
+  }'
+```
+
+### Step types
+
+| Type | Fields | Description |
+|---|---|---|
+| `email` | `templateId`, `subject`, `templateData`, `topicId` | Sends an email using a template |
+| `delay` | `delayDuration` | Waits before proceeding. Format: `30m`, `12h`, `1d`, `7d` |
+| `condition` | `condition` | Evaluates a condition before continuing |
+
+### Sequence lifecycle
+
+| Status | Meaning |
+|---|---|
+| `draft` | Being configured. Can't enroll contacts yet. |
+| `active` | Running. Contacts can be enrolled. |
+| `paused` | Temporarily stopped. Active enrollments are frozen. |
+| `archived` | Permanently disabled. |
+
+### Activate a sequence
+
+A sequence must have at least one step before it can be activated:
+
+```bash
+curl -X POST http://localhost:3891/v1/sequences/seq_abc123.../activate \
+  -H "x-api-key: pgn_..."
+```
+
+### Enroll a contact
+
+```bash
+curl -X POST http://localhost:3891/v1/sequences/seq_abc123.../enroll \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"contactId": "ctc_def456..."}'
+```
+
+```typescript
+const enrollment = await pigeons.sequences.enroll('seq_abc123...', 'ctc_def456...')
+console.log(enrollment.status) // "active"
+```
+
+The sequence must be `active`. Enrollment creates a job to process the first step.
+
+### Enrollment statuses
+
+| Status | Meaning |
+|---|---|
+| `active` | Currently progressing through steps |
+| `completed` | Finished all steps |
+| `exited` | Removed early (e.g. unsubscribed) |
+| `failed` | A step failed |
+
+### Monitor enrollments
+
+```bash
+curl "http://localhost:3891/v1/sequences/seq_abc123.../enrollments?status=active" \
+  -H "x-api-key: pgn_..."
+```
+
+### Update a sequence
+
+Pause the sequence first, then update:
+
+```bash
+curl -X POST http://localhost:3891/v1/sequences/seq_abc123.../pause \
+  -H "x-api-key: pgn_..."
+
+curl -X PATCH http://localhost:3891/v1/sequences/seq_abc123... \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"steps": [...]}'
+```
+
+When steps are provided in an update, the entire step list is replaced.
+
+### Sequence stats
+
+```json
+{
+  "stats": {
+    "enrolled": 150,
+    "completed": 80,
+    "exited": 10,
+    "active": 60
+  }
+}
+```
+
+Per-step stats track `sent`, `delivered`, `opened`, `bounced`, and `complained` for each email step.
+
+
+============================================================
+Webhooks (webhooks)
+============================================================
+
+---
+title: Webhooks
+description: Subscribe to email events and inbound messages with HTTP webhooks.
+---
+
+## Overview
+
+Webhooks deliver real-time notifications when events happen in your Pigeons instance. When an event fires, Pigeons sends a POST request to each registered webhook that subscribes to that event type.
+
+## Event Types
+
+| Event | Fires when |
+|---|---|
+| `email.sent` | An email is accepted by SES |
+| `email.delivered` | SES confirms delivery to the recipient |
+| `email.bounced` | SES reports a bounce |
+| `email.complained` | SES reports a spam complaint |
+| `email.opened` | A recipient opens an email (requires open tracking) |
+| `email.failed` | An email fails to send |
+| `inbox.message.received` | An inbound email arrives at an inbox |
+| `inbox.message.sent` | An outbound email is sent from an inbox |
+| `contact.created` | A new contact is created |
+| `contact.updated` | A contact is updated |
+| `contact.unsubscribed` | A contact unsubscribes |
+| `campaign.sent` | A campaign email is sent |
+| `campaign.completed` | A campaign finishes sending to all recipients |
+| `sequence.step.sent` | A sequence step email is sent |
+
+## Create a Webhook
+
+```bash
+curl -X POST http://localhost:3891/v1/webhooks \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://your-app.com/webhooks/pigeons",
+    "events": ["email.delivered", "email.bounced", "inbox.message.received"]
+  }'
+```
+
+```typescript
+const webhook = await pigeons.webhooks.create({
+  url: 'https://your-app.com/webhooks/pigeons',
+  events: ['email.delivered', 'email.bounced', 'inbox.message.received'],
+})
+
+console.log(webhook.secret) // "whsec_..." - only returned on creation
+```
+
+A signing secret is auto-generated if you don't provide one (minimum 16 characters). The secret is only returned in the create response. Store it securely.
+
+## Payload Format
+
+Every webhook delivery is a POST request with a JSON body:
+
+```json
+{
+  "event": "email.delivered",
+  "data": {
+    "email_id": "msg_abc123...",
+    "delivered_at": "2024-01-15T10:30:05.000Z"
+  }
+}
+```
+
+### Headers
+
+| Header | Description |
+|---|---|
+| `Content-Type` | `application/json` |
+| `X-Pigeons-Signature` | HMAC-SHA256 signature of the request body |
+| `X-Pigeons-Event` | Event type (e.g. `email.delivered`) |
+| `X-Pigeons-Delivery` | Unique delivery ID (`wdl_...`) |
+
+### Example payloads
+
+**email.delivered:**
+
+```json
+{
+  "event": "email.delivered",
+  "data": {
+    "email_id": "msg_abc123...",
+    "delivered_at": "2024-01-15T10:30:05.000Z"
+  }
+}
+```
+
+**email.bounced:**
+
+```json
+{
+  "event": "email.bounced",
+  "data": {
+    "email_id": "msg_abc123...",
+    "bounce_type": "Permanent",
+    "bounced_at": "2024-01-15T10:30:05.000Z"
+  }
+}
+```
+
+**inbox.message.received:**
+
+```json
+{
+  "event": "inbox.message.received",
+  "data": {
+    "inbox_id": "inb_abc123...",
+    "message_id": "imsg_xyz789...",
+    "thread_id": "thr_def456...",
+    "from": "customer@example.com",
+    "to": ["support@yourdomain.com"],
+    "subject": "Help with my order",
+    "text": "I need help with order #123...",
+    "direction": "inbound"
+  }
+}
+```
+
+**email.opened:**
+
+```json
+{
+  "event": "email.opened",
+  "data": {
+    "email_id": "msg_abc123...",
+    "opened_at": "2024-01-15T14:22:00.000Z"
+  }
+}
+```
+
+## Signature Verification
+
+Every delivery is signed with your webhook's secret using HMAC-SHA256. Verify signatures to ensure requests come from your Pigeons instance.
+
+### Node.js
+
+```typescript
+import { createHmac } from 'crypto'
+
+function verifySignature(body: string, signature: string, secret: string): boolean {
+  const expected = createHmac('sha256', secret).update(body).digest('hex')
+  return expected === signature
+}
+
+// In your webhook handler:
+app.post('/webhooks/pigeons', (req, res) => {
+  const signature = req.headers['x-pigeons-signature'] as string
+  const rawBody = JSON.stringify(req.body)
+
+  if (!verifySignature(rawBody, signature, 'whsec_your_secret')) {
+    return res.status(401).send('Invalid signature')
+  }
+
+  // Process the event
+  const { event, data } = req.body
+  console.log(`Received ${event}:`, data)
+
+  res.status(200).send('ok')
+})
+```
+
+### Python
+
+```python
+import hmac
+import hashlib
+
+def verify_signature(body: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(
+        secret.encode(),
+        body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)
+```
+
+## Retry Policy
+
+Failed deliveries are retried with exponential backoff:
+
+| Attempt | Delay |
+|---|---|
+| 1 | Immediate |
+| 2 | 1 minute |
+| 3 | 5 minutes |
+| 4 (final) | 15 minutes |
+
+A delivery is considered failed if:
+
+- The endpoint returns a non-2xx status code
+- The request times out (10 second timeout)
+- The connection fails
+
+After 3 retry attempts, the delivery is abandoned.
+
+### Auto-disable
+
+After 10 consecutive failures across any deliveries, the webhook is automatically disabled (status set to `disabled`). Re-enable it by updating the webhook:
+
+```bash
+curl -X PATCH http://localhost:3891/v1/webhooks/whk_abc123... \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"status": "active"}'
+```
+
+## Manage Webhooks
+
+### List
+
+```bash
+curl http://localhost:3891/v1/webhooks -H "x-api-key: pgn_..."
+```
+
+The list response does not include secrets.
+
+### Update
+
+```bash
+curl -X PATCH http://localhost:3891/v1/webhooks/whk_abc123... \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{"events": ["email.delivered", "email.bounced", "email.complained"]}'
+```
+
+### Delete
+
+```bash
+curl -X DELETE http://localhost:3891/v1/webhooks/whk_abc123... \
+  -H "x-api-key: pgn_..."
+```
+
+## SSRF Protection
+
+Webhook URLs are validated before every delivery to prevent SSRF attacks. URLs pointing to private IP ranges, localhost, or link-local addresses are rejected.
+
+
+============================================================
+Open Tracking (open-tracking)
+============================================================
+
+---
+title: Open Tracking
+description: Track email opens with a transparent tracking pixel.
+---
+
+## How It Works
+
+When open tracking is enabled, Pigeons injects a 1x1 transparent GIF pixel into the HTML body of outgoing emails, just before the closing `</body>` tag:
+
+```html
+<img src="https://pigeons.yourdomain.com/v1/t/msg_abc123..."
+     alt="" width="1" height="1"
+     style="display:none!important;width:1px!important;height:1px!important" />
+```
+
+When the recipient's email client loads the image, Pigeons records the open. The pixel endpoint returns the image immediately and processes the open asynchronously, so tracking never delays the response.
+
+## Enabling Open Tracking
+
+Open tracking is **off by default**. Two controls determine whether an email gets a tracking pixel:
+
+### Global: `PIGEONS_OPEN_TRACKING`
+
+Set the environment variable to enable tracking for all emails:
+
+```bash
+PIGEONS_OPEN_TRACKING=true
+PIGEONS_BASE_URL=https://pigeons.yourdomain.com  # required for pixel URLs
+```
+
+Both variables are required. Without `PIGEONS_BASE_URL`, pixels cannot be injected because there is no URL to point them to.
+
+### Per-email: `trackOpens`
+
+Override the global setting for individual emails:
+
+```bash
+curl -X POST http://localhost:3891/v1/emails \
+  -H "x-api-key: pgn_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "alice@example.com",
+    "subject": "Your invoice",
+    "html": "<h1>Invoice #123</h1>",
+    "trackOpens": true
+  }'
+```
+
+```typescript
+const email = await pigeons.emails.send({
+  to: 'alice@example.com',
+  subject: 'Your invoice',
+  html: '<h1>Invoice #123</h1>',
+  trackOpens: true,
+})
+```
+
+The resolution order:
+
+1. If `trackOpens` is explicitly set on the email, use that value
+2. Otherwise, use the global `PIGEONS_OPEN_TRACKING` setting
+3. Default is `false`
+
+## Open Data
+
+When an email is opened, Pigeons updates these fields on the email record:
+
+| Field | Description |
+|---|---|
+| `openCount` | Total number of times the pixel was loaded |
+| `firstOpenedAt` | Timestamp of the first open |
+| `lastOpenedAt` | Timestamp of the most recent open |
+
+```typescript
+const email = await pigeons.emails.get('msg_abc123...')
+console.log(email.openCount)     // 3
+console.log(email.firstOpenedAt) // "2024-01-15T10:45:00.000Z"
+console.log(email.lastOpenedAt)  // "2024-01-16T08:12:00.000Z"
+```
+
+## Webhook Event
+
+The first time an email is opened, Pigeons fires the `email.opened` webhook event:
+
+```json
+{
+  "event": "email.opened",
+  "data": {
+    "email_id": "msg_abc123...",
+    "opened_at": "2024-01-15T10:45:00.000Z"
+  }
+}
+```
+
+The webhook fires only on the first open, not on subsequent opens of the same email.
+
+## Campaign and Sequence Stats
+
+Open tracking integrates with campaign and sequence statistics:
+
+- **Campaigns**: The `stats.opened` counter increments when a campaign email is first opened
+- **Sequences**: Each email step has its own `stats.opened` counter
+
+```json
+{
+  "stats": {
+    "total": 500,
+    "sent": 450,
+    "delivered": 440,
+    "opened": 120,
+    "bounced": 5,
+    "complained": 1,
+    "failed": 4
+  }
+}
+```
+
+## Privacy Considerations
+
+Tracking pixels are a common industry practice, but they raise privacy concerns:
+
+- **Accuracy**: Email clients that block remote images will not trigger opens. Apple Mail Privacy Protection pre-fetches images, which can inflate open counts. Open rates are a directional metric, not an exact count.
+
+- **Transparency**: Consider disclosing tracking in your privacy policy. Some jurisdictions require it.
+
+- **Opt-out**: Use the per-email `trackOpens: false` override to skip tracking for specific emails (e.g. transactional receipts where tracking is inappropriate).
+
+- **Default off**: Pigeons defaults to tracking disabled globally. Enable it deliberately when you need the data.
+
+## Tracking Pixel Endpoint
+
+```
+GET /v1/t/:emailId
+```
+
+This endpoint is unauthenticated (no API key required) and returns a 1x1 transparent GIF with aggressive no-cache headers. It is designed to be embedded in emails and loaded by email clients.
+
+The endpoint responds immediately with the pixel image. Open recording happens asynchronously after the response is sent, so any failures in recording do not affect the pixel response.
+

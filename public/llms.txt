@@ -1,0 +1,31 @@
+# Pigeons - llms.txt
+
+> Open source email infrastructure for developers and AI agents.
+> https://pigeons.dev
+
+## Documentation
+
+- [Quick Start](https://pigeons.dev/docs/quick-start/)
+- [Self-Hosting](https://pigeons.dev/docs/self-hosting/)
+- [API Reference](https://pigeons.dev/docs/api-reference/)
+- [TypeScript SDK](https://pigeons.dev/docs/typescript-sdk/)
+- [Python SDK](https://pigeons.dev/docs/python-sdk/)
+- [CLI](https://pigeons.dev/docs/cli/)
+- [MCP Server](https://pigeons.dev/docs/mcp/)
+- [Domains & DNS](https://pigeons.dev/docs/domains/)
+- [Contacts](https://pigeons.dev/docs/contacts/)
+- [Templates](https://pigeons.dev/docs/templates/)
+- [Inboxes](https://pigeons.dev/docs/inboxes/)
+- [Campaigns & Sequences](https://pigeons.dev/docs/campaigns/)
+- [Webhooks](https://pigeons.dev/docs/webhooks/)
+- [Open Tracking](https://pigeons.dev/docs/open-tracking/)
+
+## Full docs
+
+- [llms-full.txt](https://pigeons.dev/llms-full.txt) - all docs concatenated
+
+## Source
+
+- [GitHub](https://github.com/pigeons-dev/pigeons)
+- [npm](https://www.npmjs.com/package/@pigeons/pigeons-ts)
+- [PyPI](https://pypi.org/project/pigeons-py)

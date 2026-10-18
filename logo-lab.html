@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pigeons Logo Lab</title>
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; background: #f5f5f5; padding: 40px; color: #0a0a0a; }
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .subtitle { color: #666; margin-bottom: 40px; }
+  .section { margin-bottom: 48px; }
+  .section h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid #e5e5e5; padding-bottom: 8px; }
+  .row { display: flex; gap: 32px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 24px; }
+  .item { text-align: center; }
+  .item .label { font-size: 12px; color: #999; margin-top: 8px; }
+  .bg-light { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px; display: inline-flex; align-items: center; justify-content: center; }
+  .bg-dark { background: #0a0a0a; border-radius: 12px; padding: 24px; display: inline-flex; align-items: center; justify-content: center; }
+  .bg-purple { background: #656ee8; border-radius: 12px; padding: 24px; display: inline-flex; align-items: center; justify-content: center; }
+  .nav-demo { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px 24px; display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 600; }
+  .icon-demo { border-radius: 14px; overflow: hidden; display: inline-block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px; }
+  .variant-card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px; text-align: center; }
+  .variant-card h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Pigeons Logo Lab</h1>
+<p class="subtitle">Original PNG reference vs SVG attempts. Open this file in your browser to compare.</p>
+
+<!-- REFERENCE -->
+<div class="section">
+  <h2>Original PNG (reference)</h2>
+  <div class="row">
+    <div class="item">
+      <div class="bg-light"><img src="../pigeons.png" width="128" height="128"></div>
+      <div class="label">128px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light"><img src="../pigeons.png" width="64" height="64"></div>
+      <div class="label">64px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light"><img src="../pigeons.png" width="32" height="32"></div>
+      <div class="label">32px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light"><img src="../pigeons.png" width="22" height="22"></div>
+      <div class="label">22px (nav)</div>
+    </div>
+  </div>
+</div>
+
+<!-- SVG ATTEMPT 1: Simple silhouette -->
+<div class="section">
+  <h2>Variant A: Simple bird silhouette</h2>
+  <div class="row">
+    <div class="item">
+      <div class="bg-light">
+        <svg width="128" height="128" viewBox="0 0 64 64">
+          <!-- body -->
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+          <!-- head -->
+          <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+          <!-- beak -->
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <!-- eye white -->
+          <circle cx="45" cy="20" r="3" fill="#fff"/>
+          <!-- eye pupil -->
+          <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+          <!-- wing -->
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+          <!-- tail -->
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          <!-- feet -->
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">128px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+          <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <circle cx="45" cy="20" r="3" fill="#fff"/>
+          <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">64px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="32" height="32" viewBox="0 0 64 64">
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+          <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <circle cx="45" cy="20" r="3" fill="#fff"/>
+          <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">32px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="22" height="22" viewBox="0 0 64 64">
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+          <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <circle cx="45" cy="20" r="3" fill="#fff"/>
+          <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">22px (nav)</div>
+    </div>
+  </div>
+</div>
+
+<!-- SVG ATTEMPT 2: Rounder, cuter -->
+<div class="section">
+  <h2>Variant B: Rounder, cuter proportions</h2>
+  <div class="row">
+    <div class="item">
+      <div class="bg-light">
+        <svg width="128" height="128" viewBox="0 0 64 64">
+          <!-- body + head as one blob -->
+          <path d="
+            M 48 22
+            C 52 18, 52 14, 46 12
+            C 40 10, 32 10, 24 14
+            C 16 18, 10 26, 10 34
+            C 10 42, 16 48, 24 48
+            C 32 48, 40 44, 44 38
+            C 46 34, 50 28, 48 22
+            Z
+          " fill="#656ee8"/>
+          <!-- beak -->
+          <path d="M 50 18 L 58 22 L 50 24 Z" fill="#F5A623"/>
+          <!-- eye white -->
+          <circle cx="44" cy="18" r="3.5" fill="#fff"/>
+          <!-- eye pupil -->
+          <circle cx="45" cy="17.5" r="1.8" fill="#222"/>
+          <!-- wing -->
+          <path d="
+            M 16 32
+            Q 24 22 40 30
+            Q 32 38 16 32
+            Z
+          " fill="#525ac8" opacity="0.5"/>
+          <!-- tail -->
+          <path d="M 12 30 L 2 22 L 6 32 L 2 40 L 12 38 Z" fill="#525ac8"/>
+          <!-- feet -->
+          <line x1="24" y1="48" x2="20" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- foot toes -->
+          <line x1="20" y1="58" x2="16" y2="58" stroke="#F5A623" stroke-width="2" stroke-linecap="round"/>
+          <line x1="20" y1="58" x2="22" y2="60" stroke="#F5A623" stroke-width="2" stroke-linecap="round"/>
+          <line x1="36" y1="58" x2="40" y2="58" stroke="#F5A623" stroke-width="2" stroke-linecap="round"/>
+          <line x1="36" y1="58" x2="34" y2="60" stroke="#F5A623" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">128px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <path d="M 48 22 C 52 18, 52 14, 46 12 C 40 10, 32 10, 24 14 C 16 18, 10 26, 10 34 C 10 42, 16 48, 24 48 C 32 48, 40 44, 44 38 C 46 34, 50 28, 48 22 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 58 22 L 50 24 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="3.5" fill="#fff"/>
+          <circle cx="45" cy="17.5" r="1.8" fill="#222"/>
+          <path d="M 16 32 Q 24 22 40 30 Q 32 38 16 32 Z" fill="#525ac8" opacity="0.5"/>
+          <path d="M 12 30 L 2 22 L 6 32 L 2 40 L 12 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">64px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="32" height="32" viewBox="0 0 64 64">
+          <path d="M 48 22 C 52 18, 52 14, 46 12 C 40 10, 32 10, 24 14 C 16 18, 10 26, 10 34 C 10 42, 16 48, 24 48 C 32 48, 40 44, 44 38 C 46 34, 50 28, 48 22 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 58 22 L 50 24 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="3.5" fill="#fff"/>
+          <circle cx="45" cy="17.5" r="1.8" fill="#222"/>
+          <path d="M 16 32 Q 24 22 40 30 Q 32 38 16 32 Z" fill="#525ac8" opacity="0.5"/>
+          <path d="M 12 30 L 2 22 L 6 32 L 2 40 L 12 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">32px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="22" height="22" viewBox="0 0 64 64">
+          <path d="M 48 22 C 52 18, 52 14, 46 12 C 40 10, 32 10, 24 14 C 16 18, 10 26, 10 34 C 10 42, 16 48, 24 48 C 32 48, 40 44, 44 38 C 46 34, 50 28, 48 22 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 58 22 L 50 24 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="3.5" fill="#fff"/>
+          <circle cx="45" cy="17.5" r="1.8" fill="#222"/>
+          <path d="M 16 32 Q 24 22 40 30 Q 32 38 16 32 Z" fill="#525ac8" opacity="0.5"/>
+          <path d="M 12 30 L 2 22 L 6 32 L 2 40 L 12 38 Z" fill="#525ac8"/>
+        </svg>
+      </div>
+      <div class="label">22px (nav)</div>
+    </div>
+  </div>
+</div>
+
+<!-- SVG ATTEMPT 3: Minimal / geometric -->
+<div class="section">
+  <h2>Variant C: Minimal geometric mark</h2>
+  <div class="row">
+    <div class="item">
+      <div class="bg-light">
+        <svg width="128" height="128" viewBox="0 0 64 64">
+          <!-- single body shape -->
+          <path d="
+            M 50 20
+            Q 54 16, 48 12
+            Q 40 8, 28 12
+            Q 14 16, 8 30
+            Q 4 40, 14 48
+            Q 22 52, 34 48
+            Q 44 44, 48 34
+            Q 50 28, 50 20
+            Z
+          " fill="#656ee8"/>
+          <!-- beak -->
+          <path d="M 50 18 L 60 22 L 50 26 Z" fill="#F5A623"/>
+          <!-- eye -->
+          <circle cx="44" cy="18" r="4" fill="#fff"/>
+          <circle cx="45.5" cy="17" r="2" fill="#222"/>
+          <!-- wing accent -->
+          <path d="M 12 34 Q 26 22 42 34" stroke="#fff" stroke-width="2" fill="none" opacity="0.5"/>
+          <!-- tail -->
+          <path d="M 10 28 L 0 18 L 4 28 L 0 38 L 8 36 Z" fill="#525ac8"/>
+        </svg>
+      </div>
+      <div class="label">128px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <path d="M 50 20 Q 54 16, 48 12 Q 40 8, 28 12 Q 14 16, 8 30 Q 4 40, 14 48 Q 22 52, 34 48 Q 44 44, 48 34 Q 50 28, 50 20 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 60 22 L 50 26 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="4" fill="#fff"/>
+          <circle cx="45.5" cy="17" r="2" fill="#222"/>
+          <path d="M 12 34 Q 26 22 42 34" stroke="#fff" stroke-width="2" fill="none" opacity="0.5"/>
+          <path d="M 10 28 L 0 18 L 4 28 L 0 38 L 8 36 Z" fill="#525ac8"/>
+        </svg>
+      </div>
+      <div class="label">64px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="32" height="32" viewBox="0 0 64 64">
+          <path d="M 50 20 Q 54 16, 48 12 Q 40 8, 28 12 Q 14 16, 8 30 Q 4 40, 14 48 Q 22 52, 34 48 Q 44 44, 48 34 Q 50 28, 50 20 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 60 22 L 50 26 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="4" fill="#fff"/>
+          <circle cx="45.5" cy="17" r="2" fill="#222"/>
+          <path d="M 12 34 Q 26 22 42 34" stroke="#fff" stroke-width="2" fill="none" opacity="0.5"/>
+          <path d="M 10 28 L 0 18 L 4 28 L 0 38 L 8 36 Z" fill="#525ac8"/>
+        </svg>
+      </div>
+      <div class="label">32px</div>
+    </div>
+    <div class="item">
+      <div class="bg-light">
+        <svg width="22" height="22" viewBox="0 0 64 64">
+          <path d="M 50 20 Q 54 16, 48 12 Q 40 8, 28 12 Q 14 16, 8 30 Q 4 40, 14 48 Q 22 52, 34 48 Q 44 44, 48 34 Q 50 28, 50 20 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 60 22 L 50 26 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="4" fill="#fff"/>
+          <circle cx="45.5" cy="17" r="2" fill="#222"/>
+          <path d="M 10 28 L 0 18 L 4 28 L 0 38 L 8 36 Z" fill="#525ac8"/>
+        </svg>
+      </div>
+      <div class="label">22px (nav)</div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT: On different backgrounds -->
+<div class="section">
+  <h2>On backgrounds (using Variant A)</h2>
+  <div class="row">
+    <div class="item">
+      <div class="bg-light" style="padding: 32px;">
+        <svg width="48" height="48" viewBox="0 0 64 64">
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+          <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <circle cx="45" cy="20" r="3" fill="#fff"/>
+          <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">White</div>
+    </div>
+    <div class="item">
+      <div class="bg-dark" style="padding: 32px;">
+        <svg width="48" height="48" viewBox="0 0 64 64">
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+          <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <circle cx="45" cy="20" r="3" fill="#fff"/>
+          <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">Dark</div>
+    </div>
+    <div class="item">
+      <div class="bg-purple" style="padding: 32px;">
+        <svg width="48" height="48" viewBox="0 0 64 64">
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#fff"/>
+          <circle cx="42" cy="22" r="11" fill="#fff"/>
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <circle cx="45" cy="20" r="3" fill="#656ee8"/>
+          <circle cx="46" cy="19.5" r="1.5" fill="#fff"/>
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#ddd" opacity="0.5"/>
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#ddd"/>
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="label">Purple</div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV PREVIEW -->
+<div class="section">
+  <h2>Nav preview</h2>
+  <div class="row">
+    <div class="item">
+      <div class="nav-demo">
+        <img src="../pigeons.png" width="26" height="26">
+        Pigeons
+      </div>
+      <div class="label">PNG original</div>
+    </div>
+    <div class="item">
+      <div class="nav-demo">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+          <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+          <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+          <circle cx="45" cy="20" r="3" fill="#fff"/>
+          <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+          <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+          <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Pigeons
+      </div>
+      <div class="label">SVG Variant A</div>
+    </div>
+    <div class="item">
+      <div class="nav-demo">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <path d="M 48 22 C 52 18, 52 14, 46 12 C 40 10, 32 10, 24 14 C 16 18, 10 26, 10 34 C 10 42, 16 48, 24 48 C 32 48, 40 44, 44 38 C 46 34, 50 28, 48 22 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 58 22 L 50 24 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="3.5" fill="#fff"/>
+          <circle cx="45" cy="17.5" r="1.8" fill="#222"/>
+          <path d="M 16 32 Q 24 22 40 30 Q 32 38 16 32 Z" fill="#525ac8" opacity="0.5"/>
+          <path d="M 12 30 L 2 22 L 6 32 L 2 40 L 12 38 Z" fill="#525ac8"/>
+          <line x1="24" y1="48" x2="20" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="32" y1="48" x2="36" y2="58" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        Pigeons
+      </div>
+      <div class="label">SVG Variant B</div>
+    </div>
+    <div class="item">
+      <div class="nav-demo">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <path d="M 50 20 Q 54 16, 48 12 Q 40 8, 28 12 Q 14 16, 8 30 Q 4 40, 14 48 Q 22 52, 34 48 Q 44 44, 48 34 Q 50 28, 50 20 Z" fill="#656ee8"/>
+          <path d="M 50 18 L 60 22 L 50 26 Z" fill="#F5A623"/>
+          <circle cx="44" cy="18" r="4" fill="#fff"/>
+          <circle cx="45.5" cy="17" r="2" fill="#222"/>
+          <path d="M 10 28 L 0 18 L 4 28 L 0 38 L 8 36 Z" fill="#525ac8"/>
+        </svg>
+        Pigeons
+      </div>
+      <div class="label">SVG Variant C</div>
+    </div>
+  </div>
+</div>
+
+<!-- FAVICON PREVIEW -->
+<div class="section">
+  <h2>Favicon / App Icon preview</h2>
+  <div class="row">
+    <div class="item">
+      <div class="icon-demo">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <rect width="64" height="64" rx="14" fill="#656ee8"/>
+          <g transform="translate(6 4) scale(0.8)">
+            <ellipse cx="28" cy="34" rx="18" ry="16" fill="#fff"/>
+            <circle cx="42" cy="22" r="11" fill="#fff"/>
+            <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+            <circle cx="45" cy="20" r="3" fill="#656ee8"/>
+            <circle cx="46" cy="19.5" r="1.5" fill="#fff"/>
+            <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#ddd" opacity="0.4"/>
+            <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#ddd"/>
+          </g>
+        </svg>
+      </div>
+      <div class="label">Purple bg, white bird</div>
+    </div>
+    <div class="item">
+      <div class="icon-demo">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <rect width="64" height="64" rx="14" fill="#0A0A0A"/>
+          <g transform="translate(6 4) scale(0.8)">
+            <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+            <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+            <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+            <circle cx="45" cy="20" r="3" fill="#fff"/>
+            <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+            <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+            <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+          </g>
+        </svg>
+      </div>
+      <div class="label">Dark bg, blue bird</div>
+    </div>
+    <div class="item">
+      <div class="icon-demo">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <rect width="64" height="64" rx="14" fill="#fff"/>
+          <rect x="0.5" y="0.5" width="63" height="63" rx="13.5" fill="none" stroke="#e5e5e5"/>
+          <g transform="translate(6 4) scale(0.8)">
+            <ellipse cx="28" cy="34" rx="18" ry="16" fill="#656ee8"/>
+            <circle cx="42" cy="22" r="11" fill="#656ee8"/>
+            <path d="M 52 21 L 58 24 L 52 27 Z" fill="#F5A623"/>
+            <circle cx="45" cy="20" r="3" fill="#fff"/>
+            <circle cx="46" cy="19.5" r="1.5" fill="#222"/>
+            <path d="M 14 30 Q 26 20 40 34 Q 28 38 14 30 Z" fill="#525ac8" opacity="0.6"/>
+            <path d="M 10 30 L 4 22 L 6 30 L 4 36 L 10 38 Z" fill="#525ac8"/>
+            <line x1="24" y1="48" x2="20" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="32" y1="48" x2="36" y2="56" stroke="#F5A623" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+        </svg>
+      </div>
+      <div class="label">White bg, blue bird</div>
+    </div>
+  </div>
+</div>
+
+<!-- LEGO PIXEL ART (from Midjourney) -->
+<div class="section">
+  <h2>Variant D: Lego pixel art</h2>
+  <p style="color: #666; font-size: 14px; margin-bottom: 16px;">Recreated from Midjourney lego pigeon. Bird faces left, 3 purple shades + orange accents, split tail.</p>
+  <div class="row" id="pixel-sizes"></div>
+  <div class="row" style="margin-top: 24px;" id="pixel-contexts"></div>
+</div>
+
+<script>
+(function() {
+  // Pixel data: [gridX, gridY, colorKey]
+  // D=dark purple, M=brand purple, L=light wing, O=orange
+  var P = [
+    // Head crown
+    [5,1,'D'],[6,1,'D'],
+    // Head
+    [4,2,'D'],[5,2,'D'],[6,2,'D'],[7,2,'D'],
+    // Head + beak
+    [3,3,'O'],[4,3,'D'],[5,3,'D'],[6,3,'D'],
+    // Neck
+    [5,4,'D'],[6,4,'D'],
+    // Upper body
+    [4,5,'D'],[5,5,'D'],[6,5,'D'],[7,5,'D'],
+    // Body row
+    [3,6,'D'],[4,6,'D'],[5,6,'M'],[6,6,'M'],[7,6,'D'],[8,6,'D'],
+    // Wing rows
+    [3,7,'D'],[4,7,'M'],[5,7,'L'],[6,7,'L'],[7,7,'L'],[8,7,'M'],[9,7,'D'],
+    [3,8,'D'],[4,8,'M'],[5,8,'L'],[6,8,'L'],[7,8,'L'],[8,8,'M'],[9,8,'D'],
+    // Lower body
+    [3,9,'D'],[4,9,'D'],[5,9,'M'],[6,9,'M'],[7,9,'D'],[8,9,'D'],[9,9,'D'],[10,9,'D'],
+    // Body bottom + tail
+    [4,10,'D'],[5,10,'D'],[6,10,'D'],[7,10,'D'],[8,10,'D'],[9,10,'D'],[10,10,'D'],[11,10,'D'],
+    // Tail split
+    [5,11,'D'],[6,11,'D'],[7,11,'D'],[9,11,'D'],[10,11,'D'],[11,11,'D'],
+    // Feet + tail end
+    [5,12,'O'],[6,12,'O'],[10,12,'D'],[11,12,'D'],
+    // Tail tip
+    [11,13,'D'],
+  ];
+
+  var COLORS = { D:'#525ac8', M:'#656ee8', L:'#9b9ff0', O:'#F5A623' };
+  var WHITE  = { D:'#ffffff', M:'#ffffff', L:'#e8e8ff', O:'#F5A623' };
+
+  function rects(colorMap) {
+    return P.map(function(p) {
+      return '<rect x="'+p[0]*4+'" y="'+p[1]*4+'" width="4" height="4" fill="'+colorMap[p[2]]+'"/>';
+    }).join('');
+  }
+
+  function pigeon(size, colorMap) {
+    return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 64 64" shape-rendering="crispEdges">' + rects(colorMap || COLORS) + '</svg>';
+  }
+
+  // Size demos
+  var sizes = document.getElementById('pixel-sizes');
+  [{s:128,l:'128px'},{s:64,l:'64px'},{s:32,l:'32px'},{s:22,l:'22px (nav)'}].forEach(function(o) {
+    sizes.innerHTML += '<div class="item"><div class="bg-light">' + pigeon(o.s) + '</div><div class="label">' + o.l + '</div></div>';
+  });
+
+  // Context demos
+  var ctx = document.getElementById('pixel-contexts');
+
+  // Dark bg
+  ctx.innerHTML += '<div class="item"><div class="bg-dark" style="padding:32px">' + pigeon(64) + '</div><div class="label">Dark bg</div></div>';
+
+  // Nav preview
+  ctx.innerHTML += '<div class="item"><div class="nav-demo">' + pigeon(26) + ' Pigeons</div><div class="label">Nav preview</div></div>';
+
+  // Favicon: white pigeon on purple rounded rect
+  var fav = '<svg width="64" height="64" viewBox="0 0 64 64" shape-rendering="crispEdges">'
+    + '<rect width="64" height="64" rx="14" fill="#656ee8"/>'
+    + '<g transform="translate(6.5 3) scale(0.85)">' + rects(WHITE) + '</g>'
+    + '</svg>';
+  ctx.innerHTML += '<div class="item"><div class="icon-demo">' + fav + '</div><div class="label">Favicon</div></div>';
+
+  // Dark bg favicon
+  var favDark = '<svg width="64" height="64" viewBox="0 0 64 64" shape-rendering="crispEdges">'
+    + '<rect width="64" height="64" rx="14" fill="#0a0a0a"/>'
+    + '<g transform="translate(6.5 3) scale(0.85)">' + rects(COLORS) + '</g>'
+    + '</svg>';
+  ctx.innerHTML += '<div class="item"><div class="icon-demo">' + favDark + '</div><div class="label">Favicon (dark)</div></div>';
+})();
+</script>
+
+</body>
+</html>
