@@ -61,7 +61,7 @@ export function HowItWorks() {
           </h2>
         </FadeIn>
 
-        <Stagger stagger={0.12} className="mt-16 grid gap-8 lg:grid-cols-3">
+        <Stagger stagger={0.06} className="mt-16 grid gap-8 lg:grid-cols-3">
           {steps.map((s) => (
             <StaggerItem key={s.number}>
               <div className="relative">

@@ -58,27 +58,27 @@ export function Hero() {
 
       <div className="relative z-10 container mx-auto px-4 pt-16 pb-32 flex flex-col items-center text-center pointer-events-none">
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.35, delay: 0.05, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="eyebrow mb-4"
         >
           Open Source Email Infrastructure
         </motion.p>
 
         <motion.h1
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.15, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.4, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="text-5xl md:text-7xl font-extrabold text-ink tracking-tight max-w-4xl leading-[1.08]"
         >
           email for your AI agents
         </motion.h1>
 
         <motion.p
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.35, delay: 0.2, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="mt-8 text-lg md:text-xl text-ink-2 max-w-2xl mx-auto leading-relaxed"
         >
           give your agents their own email address. send transactional
@@ -87,9 +87,9 @@ export function Hero() {
         </motion.p>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.35, delay: 0.3, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="mt-10 flex flex-col sm:flex-row items-center gap-3 pointer-events-auto"
         >
           <InstallCommand />
@@ -102,9 +102,9 @@ export function Hero() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.3, delay: 0.38, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="mt-8 flex flex-wrap items-center justify-center gap-2"
         >
           {[
@@ -125,9 +125,9 @@ export function Hero() {
 
         {/* Terminal mockup */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.75, ease: [0.21, 0.47, 0.32, 0.98] }}
+          transition={{ duration: 0.45, delay: 0.45, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="mt-14 w-full max-w-2xl mx-auto pointer-events-auto"
         >
           <div

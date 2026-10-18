@@ -8,8 +8,8 @@ const ease = [0.21, 0.47, 0.32, 0.98] as const;
 export function FadeIn({
   children,
   delay = 0,
-  duration = 0.5,
-  y = 24,
+  duration = 0.35,
+  y = 16,
   className,
 }: {
   children: ReactNode;
@@ -22,7 +22,7 @@ export function FadeIn({
     <motion.div
       initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
+      viewport={{ once: true, margin: "-100px" }}
       transition={{ duration, delay, ease }}
       className={className}
     >
@@ -31,16 +31,9 @@ export function FadeIn({
   );
 }
 
-const staggerVariants = {
-  hidden: {},
-  visible: (stagger: number) => ({
-    transition: { staggerChildren: stagger },
-  }),
-};
-
 export function Stagger({
   children,
-  stagger = 0.08,
+  stagger = 0.05,
   delayChildren = 0,
   className,
 }: {
@@ -53,7 +46,7 @@ export function Stagger({
     <motion.div
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, margin: "-80px" }}
+      viewport={{ once: true, margin: "-100px" }}
       variants={{
         hidden: {},
         visible: {
@@ -68,11 +61,11 @@ export function Stagger({
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
+  hidden: { opacity: 0, y: 14 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.45, ease },
+    transition: { duration: 0.3, ease },
   },
 };
 

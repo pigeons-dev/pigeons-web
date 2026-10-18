@@ -64,7 +64,7 @@ export function Features() {
           </p>
         </FadeIn>
 
-        <Stagger stagger={0.06} className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger stagger={0.04} className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
             <StaggerItem key={f.title}>
               <div className="rounded-xl border border-line bg-surface-alt p-6 h-full">
