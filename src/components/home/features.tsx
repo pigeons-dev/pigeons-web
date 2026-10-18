@@ -1,5 +1,8 @@
+"use client";
+
 import { Mail, Inbox, Megaphone, Bot, Code, Server } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { FadeIn, Stagger, StaggerItem } from "../ui/fade-in";
 
 interface Feature {
   icon: LucideIcon;
@@ -50,31 +53,32 @@ export function Features() {
   return (
     <section id="features" className="py-24 px-6">
       <div className="mx-auto max-w-6xl">
-        <p className="eyebrow mb-3 text-center">Features</p>
-        <h2 className="display text-center text-3xl sm:text-4xl text-ink">
-          Everything you need to send email
-        </h2>
-        <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-ink-2 leading-relaxed">
-          A complete email platform in a single binary. Transactional, inbound,
-          campaigns, and AI tooling out of the box.
-        </p>
+        <FadeIn>
+          <p className="eyebrow mb-3 text-center">Features</p>
+          <h2 className="display text-center text-3xl sm:text-4xl text-ink">
+            Everything you need to send email
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-lg text-ink-2 leading-relaxed">
+            A complete email platform in a single binary. Transactional, inbound,
+            campaigns, and AI tooling out of the box.
+          </p>
+        </FadeIn>
 
-        <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Stagger stagger={0.06} className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
-            <div
-              key={f.title}
-              className="rounded-xl border border-line bg-surface-alt p-6"
-            >
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-                <f.icon className="h-5 w-5 text-accent" strokeWidth={1.5} />
+            <StaggerItem key={f.title}>
+              <div className="rounded-xl border border-line bg-surface-alt p-6 h-full">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+                  <f.icon className="h-5 w-5 text-accent" strokeWidth={1.5} />
+                </div>
+                <h3 className="text-[17px] font-semibold text-ink mb-3">{f.title}</h3>
+                <p className="text-base text-ink-2 leading-[1.75]">
+                  {f.description}
+                </p>
               </div>
-              <h3 className="text-[17px] font-semibold text-ink mb-3">{f.title}</h3>
-              <p className="text-base text-ink-2 leading-[1.75]">
-                {f.description}
-              </p>
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );

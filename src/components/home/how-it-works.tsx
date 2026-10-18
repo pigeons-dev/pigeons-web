@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FadeIn, Stagger, StaggerItem } from "../ui/fade-in";
 
 const steps = [
   {
@@ -53,27 +54,31 @@ export function HowItWorks() {
   return (
     <section id="how-it-works" className="py-24 px-6 bg-surface-alt">
       <div className="mx-auto max-w-7xl">
-        <p className="eyebrow mb-3 text-center">How It Works</p>
-        <h2 className="display text-center text-3xl sm:text-4xl text-ink">
-          Up and running in three steps
-        </h2>
+        <FadeIn>
+          <p className="eyebrow mb-3 text-center">How It Works</p>
+          <h2 className="display text-center text-3xl sm:text-4xl text-ink">
+            Up and running in three steps
+          </h2>
+        </FadeIn>
 
-        <div className="mt-16 grid gap-8 lg:grid-cols-3">
+        <Stagger stagger={0.12} className="mt-16 grid gap-8 lg:grid-cols-3">
           {steps.map((s) => (
-            <div key={s.number} className="relative">
-              <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
-                {s.number}
+            <StaggerItem key={s.number}>
+              <div className="relative">
+                <div className="mb-4 flex h-9 w-9 items-center justify-center rounded-full bg-accent text-sm font-bold text-white">
+                  {s.number}
+                </div>
+
+                <h3 className="text-lg font-semibold text-ink">{s.title}</h3>
+                <p className="mt-2 text-base leading-relaxed text-ink-2">
+                  {s.description}
+                </p>
+
+                <CopyBlock code={s.code} />
               </div>
-
-              <h3 className="text-lg font-semibold text-ink">{s.title}</h3>
-              <p className="mt-2 text-base leading-relaxed text-ink-2">
-                {s.description}
-              </p>
-
-              <CopyBlock code={s.code} />
-            </div>
+            </StaggerItem>
           ))}
-        </div>
+        </Stagger>
       </div>
     </section>
   );

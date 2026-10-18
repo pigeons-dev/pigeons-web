@@ -56,7 +56,7 @@ export function Hero() {
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="eyebrow mb-4"
         >
           Open Source Email Infrastructure
@@ -74,7 +74,7 @@ export function Hero() {
         <motion.p
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.35 }}
+          transition={{ duration: 0.5, delay: 0.35, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="mt-8 text-lg md:text-xl text-ink-2 max-w-2xl mx-auto leading-relaxed"
         >
           give your agents their own email address. send transactional
@@ -85,7 +85,7 @@ export function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.5, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="mt-10 flex flex-col sm:flex-row items-center gap-3 pointer-events-auto"
         >
           <InstallCommand />
@@ -100,7 +100,7 @@ export function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
+          transition={{ duration: 0.5, delay: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
           className="mt-8 flex flex-wrap items-center justify-center gap-2"
         >
           {[
